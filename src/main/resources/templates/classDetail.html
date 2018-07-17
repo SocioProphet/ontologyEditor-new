@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Classes</title>
+    <link rel="stylesheet" href="/webjars/bootstrap/3.3.7/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <link href="http://code.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css" rel="Stylesheet"/>
+    <link rel="stylesheet" href="../css/jqtree.css"/>
+</head>
+<body>
+<div th:replace="fragments/header :: header"/>
+
+<div class="container">
+    <div class="row">
+        <div class="col-sm-3 col-md-3 col-lg-3 tree well well-sm">
+            <h4>Class Hierarchy
+                <a onclick="loadClassData()" href="#"  data-toggle="modal" data-target="#addModel" id="addBtn"><span class="glyphicon glyphicon-plus fa-md "/></a>
+
+                <!--<form th:if="${undo}" action="/undo"  method="get" name="addAxiom">-->
+                    <!--<button type="submit" class="btn btn-link"> <span class="glyphicon glyphicon-repeat"/></button>-->
+                <!--</form>-->
+            </h4>
+            <div id="class-tree"></div>
+        </div>
+        <div class="col-sm-9 col-md-9 col-lg-9 tree well well-sm" th:if="${session.currentClass} != 'Thing'">
+
+            <div id="errorMsg"></div>
+            <div class="panel panel-info">
+                <div class="panel-heading"><p style="display:inline;" th:text="${session.currentClass}"></p>
+
+                    <a href="#" data-toggle="modal" data-target="#rename"><span class="glyphicon glyphicon-pencil fa-md " style="float:  right; font-size:  23px; margin-top:  -3px;"/></a>
+                    <a href="#" data-toggle="modal" data-target="#addAnnotation"><span class="glyphicon glyphicon-plus fa-md " style="font-size: 24px; float: right; margin-top: -4px;"/></a>
+                    <a href="#" onclick="changeAction('/removeClass');" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right" style="margin-top:  -8px;"/></a>
+                </div>
+                <div class="panel-body">
+                    <ul  class="list-group" >
+                        <li class="list-group-item" th:each="ann,iterStat : ${annotations}">
+
+                            <span th:text="${ann.property}" style="color: #74a9d6"></span>
+
+                            <span th:text="${ann.value}"></span>
+                            <a href="#" th:onclick="'javascript:changeAction(\'/removeAnnotation/'+${iterStat.index}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+
+                                <!--<span th:text="${someVar}">Grrr!!!</span>-->
+
+
+                            <!--<span th:text="${ann.getValue()}">Grrr!!!</span>-->
+                            <!--<a href="#" th:onclick="'javascript:changeAction(\'/removeSubClassOfAxiom/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>-->
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div id="subClasses" class="panel panel-info">
+                <div class="panel-heading">Sub Class Axioms<a onclick="loadClassData(); changeAAction('/addSubClassAxiom');" href="#" class="pull-right" data-toggle="modal" data-target="#addSEAxiom" id="addSub"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
+
+                <div class="panel-body" th:if="${subClasses != null}">
+                    <ul  class="list-group" >
+                        <li class="list-group-item" th:each="item,iterStat : ${subClasses}">
+                            <span th:text="${item.axiom}">Grrr!!!</span>
+                            <a href="#" th:onclick="'javascript:changeAction(\'/removeSubClassOfAxiom/'+${iterStat.index}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div id="equivalentClasses" class="panel panel-info">
+                <div class="panel-heading">Equivalent Class Axioms<a onclick="loadClassData(); changeAAction('/addEqClassAxiom');" href="#" class="pull-right" data-toggle="modal" data-target="#addSEAxiom" id="addEq"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
+                <div class="panel-body" th:if="${eqClasses != null}">
+                    <ul class="list-group" >
+                        <li class="list-group-item" th:each="item,iterStat : ${eqClasses}">
+                            <span th:text="${item.axiom}">Grrr!!!</span>
+                            <a href="#" th:onclick="'javascript:changeAction(\'/removeEqClassOfAxiom/'+${iterStat.index}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="disjointClasses" class="panel panel-info">
+                <div class="panel-heading">Disjoint Classes<a onclick="getNonDisjointClasses()" href="#" class="pull-right" data-toggle="modal" data-target="#addDjAxiom" id="addDj"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
+                <div class="panel-body" th:if="${djClasses != null}">
+                    <ul class="list-group" >
+                        <li class="list-group-item" th:each="item : ${djClasses}">
+                            <span th:text="${item}">Grrr!!!</span>
+                            <a href="#" th:onclick="'javascript:changeAction(\'/removeDisjointAxiom/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div id="domainOf" class="panel panel-info">
+                <div class="panel-heading">Domain of<a onclick="getDomainOfData()" href="#" class="pull-right" data-toggle="modal" data-target="#domain" id="addDomain"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
+                <div class="panel-body" th:if="${domainOf != null}">
+                    <ul class="list-group" >
+                        <li class="list-group-item" th:each="item : ${domainOf}">
+                            <span th:text="${item}">Grrr!!!</span>
+                            <a href="#" th:onclick="'javascript:changeAction(\'/removeDomainOf/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+            <div id="rangeOf" class="panel panel-info">
+                <div class="panel-heading">Range of <a onclick="getRangeOfData()" href="#" class="pull-right" data-toggle="modal" data-target="#range" id="addRange"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
+                <div class="panel-body" th:if="${rangeOf != null}">
+                    <ul class="list-group" >
+                        <li class="list-group-item" th:each="item : ${rangeOf}">
+                            <span th:text="${item}">Grrr!!!</span>
+                            <a href="#" th:onclick="'javascript:changeAction(\'/removeRangeOf/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addDjAxiom">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4>Add Disjoint Class Axiom</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+                <form th:action="@{/addDisjoint}" method="post" th:object="${transfer}" name="addAxiom">
+                    <input type="hidden" th:value="${session.currentClass}" name="currentClass"/>
+                    <div class="form-group"><label>Select Disjoint Class</label><select class="form-control" id="nonDis" name="classList"></select></div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block"> Add Disjoint Axiom </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="domain">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4>Add Domain Of Axiom</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+                <form th:action="@{/addDomainOf}" method="post" th:object="${transfer}" name="addAxiom">
+                    <input type="hidden" th:value="${session.currentClass}" name="currentClass"/>
+                    <div class="form-group"><label>Select Property</label><select class="form-control" id="domainProperty" name="oProperties"></select></div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block"> Add Disjoint Axiom </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addAnnotation">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4>Add Annotation</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+                <form th:action="@{/addAnnotaton}" method="post" th:object="${transfer}" name="addAxiom">
+                    <div class="form-group"><label>Select Annotation Type</label>
+                        <select class="form-control" name="oProperties">
+                            <option th:value="comment">Comment</option>
+                            <option th:value="isDefinedBy">Is Defined By</option>
+                            <option th:value="label">Label</option>
+                            <option th:value="seeAlso">See Also</option>
+                            <option th:value="bckcw">Backward Compatible With</option>
+                            <option th:value="deprecated">Depreciated</option>
+                            <option th:value="incomp">Incompatible With</option>
+                            <option th:value="versionInfo">Version Info</option>
+                        </select></div>
+                    <div class="form-group"><label>Enter the Value for The Annotation</label>
+                        <textarea class="form-control" rows="5" th:field="*{description}"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block"> Add Annotation </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rename">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4>Add Annotation</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+                <form th:action="@{/rename}" method="post" th:object="${transfer}" name="addAxiom">
+
+                    <div class="form-group"><label>Enter the new Name</label>
+                        <input type="text" class="form-control" th:field="*{description}"/>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block"> Add Annotation </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="range">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4>Add Range Of Axiom</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+                <form th:action="@{/addRangeOf}" method="post" th:object="${transfer}" name="addAxiom">
+                    <input type="hidden" th:value="${session.currentClass}" name="currentClass"/>
+                    <div class="form-group"><label>Select Property</label><select class="form-control" id="rangeProperty" name="oProperties"></select></div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block"> Add Disjoint Axiom </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="addModel">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4>Add New Class</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+                <!--/*@thymesVar id="transfer" type="hello.bean.transfer"*/-->
+                <form action="#" id="add-form" th:action="@{/addNewClass}" th:object="${transfer}" method="post" name="addForm">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" th:field="*{currentClass}" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Parent</label>
+                        <select class="form-control" id="cl8" name="classList">
+                            <option value="Thing">Thing</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-control" rows="5" id="comment"  th:field="*{description}"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" id="submitBtn" class="btn btn-success btn-block"> Add </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteForm">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body" style="padding:40px 50px;">
+                <!--/*@thymesVar id="transfer" type="hello.bean.transfer"*/-->
+                <form action="#" th:object="${transfer}" method="get" name="addForm">
+                    <input type="hidden" value="0"/>
+                    <div class="form-group">
+                        <label>State the Reason For Deletion</label>
+                        <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-danger btn-block"> Remove </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addSEAxiom">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4>Add New Axiom</h4>
+                <label>Select the transfer</label>
+                <select id="axiomCat" class="form-control">
+                    <option value="o1">Sub Class of another Class</option>
+                    <option value="o2">Sub Class of Class 1 or ... or Class n</option>
+                    <option value="o3">Sub Class of Class 1 and ... and Class n</option>
+                    <option value="o4">Sub Class of Property has some Range</option>
+                    <option value="o5">Sub Class of Property has only ( Range 1 or ... or Range n )</option>
+                    <option value="o6">Sub Class of Property has value Literal</option>
+                    <option value="o7">Sub Class of Property has Cardinality</option>
+
+                </select>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+
+
+                <div id="o1"  class="group">
+                    <form action="#" th:object="${transfer}" method="get" name="addAxiom">
+                        <input type="hidden" name="patternType" value="o1"/>
+                        <div class="form-group">
+                            <label>Class</label>
+                            <select class="form-control" id="cl1" name="classList"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success btn-block">Add Axiom</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="o2"  class="group">
+                    <form action="#" th:object="${transfer}" method="get" name="addAxiom">
+                        <input type="hidden" name="patternType" value="o2"/>
+                        <div class="form-group">
+                            <label>Classes</label>
+                            <select multiple="true" class="form-control" id="cl2" name="classList"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success btn-block">Add Axiom</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="o3" class="group">
+                    <form action="#" th:object="${transfer}" method="get" name="addAxiom">
+                        <input type="hidden" name="patternType" value="o3"/>
+                        <div class="form-group">
+                            <label>Classes</label>
+                            <select multiple="true" class="form-control" id="cl3" name="classList"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success btn-block">Add Axiom</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="o4"  class="group">
+                    <form action="#" th:object="${transfer}" method="get" name="addAxiom">
+                        <input type="hidden" name="patternType" value="o4"/>
+                        <div class="form-group">
+                            <label>Property</label>
+                            <select class="form-control" id="op1" name="oProperties"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Range</label>
+                            <select class="form-control" id="cl4" name="classList"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success btn-block">Add Axiom</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="o5" class="group">
+                    <form action="#" th:object="${transfer}" method="get" name="addAxiom">
+                        <input type="hidden" name="patternType" value="o5"/>
+                        <div class="form-group">
+                            <label>Property</label>
+                            <select class="form-control" id="op2" name="oProperties"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Ranges</label>
+                            <select  multiple="true" class="form-control" id="cl5" name="classList">
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success btn-block"> Add Axiom </button>
+                        </div>
+                    </form>
+                </div>
+
+
+
+                <div id="o6" class="group">
+                    <form action="#" th:object="${transfer}" method="get" name="addAxiom">
+
+                        <input type="hidden" name="patternType" value="o6"/>
+                        <div class="form-group">
+                            <label>Property</label>
+                            <select class="form-control" id="dp1" name="dProperties"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Value</label>
+                            <input type="text"  class="form-control" placeholder="Enter value" th:field="*{literals}"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Data Type</label>
+                            <select class="form-control" id="dt1" name="dTypes"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success btn-block"> Add Axiom </button>
+                        </div>
+
+                    </form>
+                </div>
+
+
+
+                <div id="o7" class="group">
+                    <form action="#" th:object="${transfer}" method="get" name="addAxiom">
+                        <input type="hidden" name="patternType" value="o7"/>
+                        <div class="form-group">
+                            <label>Cardinality Type</label>
+                            <select  class="form-control" th:field="*{cardinalityType}">
+                                <option value="min">Minimum</option>
+                                <option value="max">Maximum</option>
+                                <option value="exact">Exactly</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Cardinality</label>
+                            <input type="number" min="0" step="1" th:field="*{cardinality}" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Property</label>
+                            <select class="form-control" id="op3" name="oProperties"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-success btn-block"> Add Axiom </button>
+                        </div>
+                    </form>
+                </div>
+                <hr/>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="/webjars/jquery/2.2.4/jquery.min.js"></script>
+<script src="/webjars/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="http://code.jquery.com/ui/1.10.2/jquery-ui.js" ></script>
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default/style.min.css" />
+<script src="//cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/jstree.min.js"></script>
+<script src="../js/notify.min.js"></script>
+<script  th:inline="javascript">
+    /*<![CDATA[*/
+    var data = JSON.parse([[${tree}]]);
+    var node = ([[${session.currentClass}]]);
+    /*]]>*/
+</script>
+<script type="text/javascript">
+    $(document).ready(function () {
+
+
+        $('.group').hide();
+        $('#o1').show();
+        $("#axiomCat").change(function () {
+            $('.group').hide();
+            $('#'+$(this).val()).show();
+        });
+
+
+        $('#class-tree')
+            .on('changed.jstree', function (e, data) {
+                var objNode = data.instance.get_node(data.selected);
+                var url = '/classDetail/'+objNode.text;
+                location.href = url;
+            })
+            .jstree({
+                core: {
+                    data: data
+                },
+                types: {
+                    "default" : {
+                        "icon" : "glyphicon glyphicon-leaf"
+                    }
+                },
+                plugins: ["types"]
+
+            });
+        $("#class-tree").on('ready.jstree', function () {
+            var instance = $("#class-tree").jstree(true);
+            var branchCont = instance._model.data;
+            for(var branchKey in branchCont) {
+                var branch = branchCont[branchKey];
+                if(branch.text === node) {
+                   instance.select_node(branchKey,true,false);
+                    break;
+                }
+            }
+            $("#class-tree").jstree('open_all');
+        });
+
+
+
+
+        $("[name='addAxiom'],[name='removeAxiom'],[name='addForm']").on('submit', function(e){
+            e.preventDefault();
+            var self = this;
+            var form = $(this);
+            if (form.data('requestRunning')) {
+                return;
+            }
+
+            form.data('requestRunning', true);
+
+            $.ajax({
+                url: form.attr("action"),
+                type: form.attr("method"),
+                data: form.serialize(),
+                success: function(result){
+                    console.log(result);
+                    if(result|| (result.indexOf("Deleted")>-1)){
+                        $.notify("Modification Success: ", "success");
+                    }else{
+                        $.notify("Modification Failed: " , "error" );
+                    }
+
+//                    location.reload(true);
+                    setTimeout(
+                        function()
+                        {
+                            if(result.indexOf("Deleted")>-1){
+                                window.location='/classDetail/Thing';
+                            }else{
+                                location.reload(true);
+                            }
+                        }, 2000);
+                },
+                complete: function (e) {
+                    form.data('requestRunning', false);
+                }
+
+            });
+        });
+
+        $("#op1,#op2,#op3").change(function () {
+
+            var id = ($(this).attr("id"));
+            var name = $('#'+$(this).val()).selector;
+            name=name.substr(1);
+            $.ajax({
+                url:'/range/'+name,
+                type:'get',
+                dataType: 'json',
+                success: function( json ) {
+                    $('#'+id).parent().next("div").children("select").empty();
+                    $.each(json, function(i,value){
+                        $('#'+id).parent().next("div").children("select").append($('<option>').text(value).attr('value', value));
+                        $('#'+id).parent().next("div").children("select").append("</option>")
+                    });
+                }
+            });
+        });
+    });
+
+
+
+    function getDisjointClasses(){
+        $.ajax({
+            type:'get',
+            dataType: 'json',
+            success: function( json ) {
+                $('#disjointClassses').empty();
+                $.each(json, function(i,value){
+                    $('#disjointClassses').append($('<option>').text(value).attr('value', value)).append("</option>")
+                });
+            }
+        });
+    }
+function getNonDisjointClasses(){
+    $('#nonDis').empty();
+    $.ajax({
+        url: '/getNonDisjoint/'+node,
+        type: 'get',
+        dataType: 'json',
+        success: function (json) {
+            $.each(json, function (i, value) {
+                $('#nonDis').append($('<option>').text(value).attr('value', value))
+                    .append("</option>");
+            });
+        }
+    });
+}
+    function loadClassData() {
+        if ($('#cl1').is(':empty')) {
+            $.ajax({
+                url: '/getClassList',
+                type: 'get',
+                dataType: 'json',
+                success: function (json) {
+                    $.each(json, function (i, value) {
+                        $('#cl1,#cl2,#cl3,#cl4,#cl5,#cl8').append($('<option>').text(value).attr('value', value)).append("</option>");
+                    });
+                }
+            });
+        }
+        if ($('#op1').is(':empty')) {
+            $.ajax({
+                url: '/getObjectProperties',
+                type: 'get',
+                dataType: 'json',
+                success: function (json) {
+                    $.each(json, function (i, value) {
+                        $('#op1,#op2,#op3').append($('<option>').text(value).attr('value', value))
+                            .append("</option>")
+                    });
+                }
+            });
+        }
+        if ($('#in1').is(':empty')){
+            $.ajax({
+                url: '/getInstances',
+                type: 'get',
+                dataType: 'json',
+                success: function (json) {
+                    $.each(json, function (i, value) {
+                        $('#in1,#in2').append($('<option>').text(value).attr('value', value)).append("</option>")
+                    });
+                }
+            });
+        }
+        if ($('#dp1').is(':empty')) {
+            $.ajax({
+                url: '/getDataProperties',
+                type: 'get',
+                dataType: 'json',
+                success: function (json) {
+                    $.each(json, function (i, value) {
+                        $('#dp1').append($('<option>').text(value).attr('value', value)).append("</option>")
+                    });
+                }
+            });
+        }
+
+        if ($('#dt1').is(':empty')) {
+            $.ajax({
+                url: '/getDataTypes',
+                type: 'get',
+                dataType: 'json',
+                success: function (json) {
+                    $.each(json, function (i, value) {
+                        $('#dt1').append($('<option>').text(value).attr('value', value)).append("</option>")
+                    });
+                }
+            });
+        }
+    }
+
+    function getDomainOfData(){
+        if ($('#domainProperty').is(':empty')) {
+            $.ajax({
+                url: '/getDomainOfProperties',
+                type: 'get',
+                dataType: 'json',
+                success: function (json) {
+                    $.each(json, function (i, value) {
+                        $('#domainProperty').append($('<option>').text(value).attr('value', value)).append("</option>")
+                    });
+                }
+            });
+        }
+    }
+    function getRangeOfData(){
+        if ($('#rangeProperty').is(':empty')) {
+            $.ajax({
+                url: '/getObjectProperties',
+                type: 'get',
+                dataType: 'json',
+                success: function (json) {
+                    $.each(json, function (i, value) {
+                        $('#rangeProperty').append($('<option>').text(value).attr('value', value)).append("</option>")
+                    });
+                }
+            });
+        }
+    }
+
+    function changeAction(url){
+        $("#deleteForm").find("form").attr("action",url);
+    }
+    function changeAAction(url){
+        if(url==='/addEqClassAxiom'){
+            $("#axiomCat").children("option").each(function () {
+                var t = $(this).text().replace("Sub Class of","Equivalent to");
+                $(this).text(t);
+            });
+        }else{
+            $("#axiomCat").children("option").each(function () {
+                var t = $(this).text().replace("Equivalent to","Sub Class of");
+                $(this).text(t);
+            });
+        }
+        $("#addSEAxiom").find("form").attr("action",url);
+    }
+
+
+</script>
+</body>
+</html>

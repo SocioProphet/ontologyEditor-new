@@ -1,0 +1,559 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+
+    <title>Object Properties</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="stylesheet" href="/webjars/bootstrap/3.3.7/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="../css/main.css"/>
+    <link href="http://code.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css" rel="Stylesheet"/>
+    <link rel="stylesheet" href="../css/jqtree.css"/>
+</head>
+<body>
+<div th:replace="fragments/header :: header"/>
+<div class="container">
+    <div class="row">
+        <div class="col-sm-3 tree well well-sm">
+            <h4>Object Property Hierarchy
+                <a href="#"  data-toggle="modal" data-target="#addOProperty" id="addBtn"><span class="glyphicon glyphicon-plus fa-md "/></a>
+                <form th:if="${undo}" action="/undo"  method="get" name="addForm">
+                    <button type="submit" class="btn btn-link"> <span class="glyphicon glyphicon-repeat"/></button>
+                </form>
+            </h4>
+            <div id="tree"></div>
+        </div>
+        <div class="col-sm-9 tree well well-sm" th:if="${session.currentOP} != 'topObjectProperty'">
+            <div class="panel panel-success">
+                <div class="panel-heading">Property
+                    <a href="#" onclick="changeAction('/removeOProperty');" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                </div>
+                <div class="panel-body">
+                    <p th:text="${session.currentOP}"></p></div>
+            </div>
+
+            <div class="panel panel-success" name="cats">
+                <div class="panel-heading" >Characteristics </div>
+                <div class="list-group">
+                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="F"/>Functional</label>
+                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="hidden" value="F" name="currentClass"/>
+                            <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
+                        </form>
+                    </div>
+                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="IF"/>Inverse Functional</label>
+                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="hidden" value="IF" name="currentClass"/>
+                            <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
+                        </form>
+                    </div>
+                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="T"/>Transitive</label>
+                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="hidden" value="T" name="currentClass"/>
+                            <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
+                        </form>
+                    </div>
+                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="S"/>Symmetric</label>
+                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="hidden" value="S" name="currentClass"/>
+                            <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
+                        </form>
+                    </div>
+                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="AS"/>Asymmetric</label>
+                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="hidden" value="AS" name="currentClass"/>
+                            <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
+                        </form>
+                    </div>
+                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="R"/>Reflexive</label>
+                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="hidden" value="R" name="currentClass"/>
+                            <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
+                        </form>
+                    </div>
+                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="IR"/>Irreflexive</label>
+                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="hidden" value="IR" name="currentClass"/>
+                            <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-success">
+                <div class="panel-heading">Inverse Property
+                    <a  th:if="${oPInverse} == null" href="#" data-toggle="modal" data-target="#addIOProperty" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
+
+                    <a href="#" th:if="${oPInverse} != null" onclick="changeAction('/removeIOProperty');" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                </div>
+                <div class="panel-body">
+                    <p th:text="${oPInverse}"></p>
+
+                </div>
+            </div>
+
+            <div class="panel panel-success">
+                <div class="panel-heading">Disjoint Properties
+                    <a onclick="loadNonDisjoint()" href="#" data-toggle="modal" data-target="#addDisOProperty" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
+                </div>
+                <div class="panel-body">
+                    <ul class="list-group" >
+                        <li class="list-group-item" th:each="item : ${disjointOP}">
+                            <span th:text="${item}">Grrr!!!</span>
+                            <a href="#" th:onclick="'javascript:changeAction(\'/removeDisOProperty/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="panel panel-success">
+                <div class="panel-heading">Property Domains
+                    <a onclick="getClassList()" href="#" data-toggle="modal" data-target="#addOPropertyDomain" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
+                </div>
+                <div class="panel-body">
+                    <ul class="list-group" >
+                        <li class="list-group-item" th:each="item : ${domainOP}">
+                            <span th:text="${item}">Grrr!!!</span>
+                            <a href="#" th:onclick="'javascript:changeAction(\'/removeOPropertyDomain/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="panel panel-success">
+                <div class="panel-heading">Property Ranges
+                    <a onclick="getClassList()" href="#" data-toggle="modal" data-target="#addOPropertyRange" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
+                </div>
+                <div class="panel-body">
+                    <ul class="list-group" >
+                        <li class="list-group-item" th:each="item : ${rangeOP}">
+                            <span th:text="${item}">Grrr!!!</span>
+                            <a href="#" th:onclick="'javascript:changeAction(\'/removeOPropertyRange/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="addOProperty">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4><span class="glyphicon glyphicon-lock"></span> Add New Object Property</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+
+                <!--/*@thymesVar id="transfer" type="hello.bean.transfer"*/-->
+                <form action="#" id="add-form" th:action="@{/addNewOProperty}" th:object="${transfer}" method="post" name="addForm">
+                    <input type="hidden" name = "cardinality" value="0"/>
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" th:field="*{currentClass}" class="form-control" required="required"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Parent</label>
+                        <select class="form-control" id="op1" name="oProperties">
+                            <option value="topObjectProperty">topObjectProperty</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label><input type="checkbox" th:field="*{classList}" value="F"/>Functional</label>
+                        </div>
+                        <div class="checkbox">
+                            <label><input type="checkbox" th:field="*{classList}" value="IF"/>Inverse Functional</label>
+                        </div>
+                        <div class="checkbox">
+                            <label><input type="checkbox" th:field="*{classList}" value="T"/>Transitive</label>
+                        </div>
+                        <div class="checkbox">
+                            <label><input type="checkbox" th:field="*{classList}" value="S"/>Symmetric</label>
+                        </div>
+                        <div class="checkbox">
+                            <label><input type="checkbox" th:field="*{classList}" value="AS"/>Asymmetric</label>
+                        </div>
+                        <div class="checkbox">
+                            <label><input type="checkbox" th:field="*{classList}" value="R"/>Reflexive</label>
+                        </div>
+                        <div class="checkbox">
+                            <label><input type="checkbox" th:field="*{classList}" value="IR"/>Irreflexive</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-control" rows="5" id="comment"  th:field="*{description}" required="required"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" id="submitBtn" class="btn btn-success btn-block"> Add </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addIOProperty">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4><span class="glyphicon glyphicon-lock"></span> Add Inverse Object Property</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+
+                <!--/*@thymesVar id="transfer" type="hello.bean.transfer"*/-->
+                <form action="#" th:action="@{/addIOProperty}" th:object="${transfer}" method="post" name="addForm">
+                    <input type="hidden" value="0"/>
+                    <div class="form-group">
+                        <label>Property</label>
+                        <input type="text" th:value="${session.currentOP}" name="currentClass" class="form-control" disabled="disabled"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Inverse Property</label>
+                        <select class="form-control" id="op2" name="oProperties">
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block"> Add </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addDisOProperty">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4><span class="glyphicon glyphicon-lock"></span> Add Disjoint Object Properties</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+
+                <!--/*@thymesVar id="transfer" type="hello.bean.transfer"*/-->
+                <form action="#" th:action="@{/addDisOProperty}" th:object="${transfer}" method="post" name="addForm">
+                    <input type="hidden" value="0"/>
+                    <div class="form-group">
+                        <label>Property</label>
+                        <input type="text" th:value="${session.currentOP}" name="currentClass" class="form-control" disabled="disabled"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Disjoint Properties</label>
+                        <select class="form-control" id="op3" name="oProperties" multiple="multiple">
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block"> Add </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addOPropertyDomain">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4>Add Object Properties Domains</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+
+                <!--/*@thymesVar id="transfer" type="hello.bean.transfer"*/-->
+                <form action="#" th:action="@{/addOPropertyDomain}" th:object="${transfer}" method="post" name="addForm">
+                    <input type="hidden" value="0"/>
+                    <div class="form-group">
+                        <label>Property</label>
+                        <input type="text" th:value="${session.currentOP}" name="currentClass" class="form-control" disabled="disabled"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Domain</label>
+                        <select class="form-control" id="cl1" name="classList" >
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block"> Add </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="addOPropertyRange">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="padding:35px 50px;">
+                <button type="button" data-dismiss="modal" class="close">&times;</button>
+                <h4>Add Object Properties Ranges</h4>
+            </div>
+            <div class="modal-body" style="padding:40px 50px;">
+
+                <!--/*@thymesVar id="transfer" type="hello.bean.transfer"*/-->
+                <form action="#" th:action="@{/addOPropertyRange}" th:object="${transfer}" method="post" name="addForm">
+                    <input type="hidden" value="0"/>
+                    <div class="form-group">
+                        <label>Property</label>
+                        <input type="text" th:value="${session.currentOP}" name="currentClass" class="form-control" disabled="disabled"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Range</label>
+                        <select class="form-control" id="cl2" name="classList" >
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-block"> Add </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteForm">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body" style="padding:40px 50px;">
+            <!--/*@thymesVar id="transfer" type="hello.bean.transfer"*/-->
+            <form action="#" th:object="${transfer}" method="get" name="addForm">
+                <input type="hidden" value="0"/>
+                <div class="form-group">
+                    <label>State the Reason For Deletion</label>
+                    <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-danger btn-block"> Remove </button>
+                </div>
+            </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="/webjars/jquery/2.2.4/jquery.min.js"></script>
+<script src="/webjars/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="http://code.jquery.com/ui/1.10.2/jquery-ui.js" ></script>
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default/style.min.css" />
+<script src="//cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/jstree.min.js"></script>
+<script src="../js/notify.min.js"></script>
+<script  th:inline="javascript">
+    /*<![CDATA[*/
+    var data = JSON.parse([[${tree}]]);
+    var node = ([[${session.currentOP}]]);
+    /*]]>*/
+
+    $(document).ready(function () {
+        $('#tree')
+            .on('changed.jstree', function (e, data) {
+                var objNode = data.instance.get_node(data.selected);
+                var url = '/objectPropertyDetail/' + objNode.text;
+                location.href = url;
+            })
+            .jstree({
+                core: {
+                    data: data
+                },
+                types: {
+                    "default": {
+                        "icon": "glyphicon glyphicon-leaf"
+                    }
+                },
+                plugins: ["types"]
+
+            });
+        $("#tree").on('ready.jstree', function () {
+            var instance = $("#tree").jstree(true);
+            var branchCont = instance._model.data;
+            for (var branchKey in branchCont) {
+                var branch = branchCont[branchKey];
+                if (branch.text === node) {
+                    instance.select_node(branchKey, true, false);
+                    break;
+                }
+            }
+            $("#tree").jstree('open_all');
+        });
+
+        $("[name='addForm']").on('submit', function(e){
+            e.preventDefault();
+            var self = this;
+            var form = $(this);
+            if (form.data('requestRunning')) {
+                return;
+            }
+
+            form.data('requestRunning', true);
+
+            $.ajax({
+                url: form.attr("action"),
+                type: form.attr("method"),
+                data: form.serialize(),
+                success: function(result){
+                    if(result|| (result.indexOf("Deleted")>-1)){
+                        $.notify("Modification Success", "success");
+                    }else{
+                        $.notify("Modification Failed", "error" );
+                    }
+
+
+                    setTimeout(
+                        function()
+                        {
+                            if(result.indexOf("Deleted")>-1){
+                                window.location='/objectPropertyDetail/topObjectProperty';
+                            }else{
+                                location.reload(true);
+                            }
+                        }, 2000);
+
+
+                },
+                complete: function (e) {
+                    form.data('requestRunning', false);
+                }
+
+            });
+        });
+
+        getChars();
+        loadDisjoint();
+        loadPropertyData();
+
+
+    });
+
+    function getClassList(){
+
+        $('#cl1,#cl2').empty();
+        $.ajax({
+            url: '/getClassList',
+            type: 'get',
+            dataType: 'json',
+            success: function (json) {
+                $.each(json, function (i, value) {
+                    $('#cl1,#cl2').append($('<option>').text(value).attr('value', value)).append("</option>");
+                });
+            }
+        });
+    }
+
+    function loadPropertyData() {
+        $.ajax({
+            url: '/getObjectProperties',
+            type: 'get',
+            dataType: 'json',
+            success: function (json) {
+                $.each(json, function (i, value) {
+                    $('#op1,#op2').append($('<option>').text(value).attr('value', value)).append("</option>");
+                });
+            }
+        });
+
+    }
+
+    function getHierearchy(){
+        $.ajax({
+            url:'/getOPHierarchy',
+            type:'get',
+            dataType:'json',
+            success:function(json){
+                data=json;
+            }
+        })
+    }
+
+    function getChars(){
+
+        $.ajax({
+            url:' /getOPChars/'+node,
+            type:'get',
+            dataType:'json',
+            success:function(json){
+                console.log(json)
+                $.each( json, function( key, value ) {
+                    if(value=='F'){
+                        $("[name='cats']").find("input[value='F']").prop('checked', true);
+                    }
+                    if(value=='IF'){
+                        $("[name='cats']").find("input[value='IF']").prop('checked', true);
+                    }
+                    if(value=='T'){
+                        $("[name='cats']").find("input[value='T']").prop('checked', true);
+                    }
+                    if(value=='S'){
+                        $("[name='cats']").find("input[value='S']").prop('checked', true);
+                    }
+                    if(value=='AS'){
+                        $("[name='cats']").find("input[value='AS']").prop('checked', true);
+                    }
+                    if(value=='R'){
+                        $("[name='cats']").find("input[value='R']").prop('checked', true);
+                    }
+                    if(value=='IR'){
+                        $("[name='cats']").find("input[value='IR']").prop('checked', true);
+                    }
+                });
+            }
+        })
+    }
+
+    function loadNonDisjoint(){
+        $('#op3').empty();
+        $.ajax({
+            url: '/getNonDisOProperties',
+            type: 'get',
+            dataType: 'json',
+            success: function (json) {
+                $.each(json, function (i, value) {
+                    $('#op3').append($('<option>').text(value).attr('value', value)).append("</option>");
+                });
+            }
+        });
+    }
+    function loadDisjoint(){
+        $.ajax({
+            url: '/getDisOProperties',
+            type: 'get',
+            dataType: 'json',
+            success: function (json) {
+                $.each(json, function (i, value) {
+                    $('#disOP').append($('<li class="list-group-item">').text(value).attr('value', value))
+                        .append("</li>");
+                });
+            }
+        });
+    }
+
+    function changeAction(url){
+        $("#deleteForm").find("form").attr("action",url);
+    }
+</script>
+</body>
+</html>

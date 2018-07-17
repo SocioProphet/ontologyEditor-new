@@ -1,0 +1,266 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+
+    <title>Version Management</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="stylesheet" href="/webjars/bootstrap/3.3.7/css/bootstrap.min.css"/>
+    <link href="http://code.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css" rel="Stylesheet"/>
+    <link rel="stylesheet" href="css/jquery.bootgrid.min.css/"/>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.12/css/jquery.dataTables.min.css"/>
+
+    <link rel="stylesheet" href="/css/main.css"/>
+    <style>
+
+        .node {
+            cursor: pointer;
+        }
+
+        .node circle {
+            fill: #fff;
+            stroke: steelblue;
+            stroke-width: 3px;
+        }
+
+        .node text {
+            font: 12px sans-serif;
+        }
+
+        .link {
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 2px;
+        }
+
+    </style>
+
+</head>
+<body>
+<div th:replace="fragments/header :: header"/>
+
+<div class="container">
+    <div class="panel panel-primary">
+        <div class="panel-heading">Current Version</div>
+        <div class="panel-body">
+            <p th:text="${version}"></p>
+        </div>
+    </div>
+    <div class="panel panel-primary">
+        <div class="panel-heading">Version Graph</div>
+        <div class="panel-body">
+            <svg id="tree"></svg>
+        </div>
+    </div>
+    <div id="MainChange" class="panel panel-primary">
+        <div class="panel-heading">Version Details</div>
+        <div class="panel-body">
+            <table id="data" cellspacing="0" width="100%">
+                <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Number</th>
+                    <th>Prior</th>
+                    <th>Description</th>
+                    <th>Created time</th>
+                    <th>Version Change</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+
+</div>
+<script type="text/javascript" src="/webjars/jquery/2.2.4/jquery.min.js"></script>
+<script src="/webjars/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="http://code.jquery.com/ui/1.10.2/jquery-ui.js" ></script>
+<script src="https://cdn.datatables.net/1.10.12/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.16/js/dataTables.bootstrap.min.js"></script>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script  th:inline="javascript">
+    /*<![CDATA[*/
+    var treeData = JSON.parse([[${tree}]]);
+
+    /*]]>*/
+</script>
+<script>
+    $(document).ready( function () {
+        var table = $('#data').DataTable({
+            "sAjaxSource": "/getAllVersions",
+            "sAjaxDataProp": "",
+            "order": [[ 0, "asc" ]],
+            "aoColumns": [
+                { "mData": "id" },
+                { "mData": "number" },
+                { "mData": "prior" },
+                { "mData": "description" },
+                { "mData": "time" },
+                { "mData": "" }
+            ],columnDefs: [
+                { targets: 0, visible:false },
+                { data: null,defaultContent: "<button>Select</button>", targets: 5 },
+            ]
+
+
+        });
+
+//        var Dtable = $('#DetailData').DataTable({
+//            "sAjaxDataProp": "",
+//            "sAjaxSource": "",
+//            "order": [[ 0, "asc" ]],
+//            "aoColumns": [
+//                { "mData": "description" }
+//            ]
+//        });
+
+
+
+        $('#data tbody').on('click', 'button', function () {
+            var data = table.row( $(this).parents('tr') ).data();
+       //     var Dtable = $('#DetailData').DataTable();
+
+//            $.get('/DetailChanges/'+data.id, function(newDataArray) {
+//                Dtable.clear();
+//                Dtable.rows.add(newDataArray);
+//                Dtable.draw();
+//            });
+
+            $.ajax({url: "changeVersion/"+data.id,
+                success: function(result){
+                location.reload(true);
+            }});
+        });
+    });
+
+    var margin = {top: 20, right: 120, bottom: 20, left: 20},
+        width = $(window).width() - margin.right - margin.left,
+        height = 500 - margin.top - margin.bottom;
+
+    var i = 0,
+        duration = 750,
+        root;
+
+    var tree = d3.layout.tree()
+        .size([height, width]);
+
+    var diagonal = d3.svg.diagonal()
+        .projection(function(d) { return [d.y, d.x]; });
+
+    var svg = d3.select("#tree")
+        .attr("width", width + margin.right + margin.left)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    root = treeData;
+    root.x0 = height / 2;
+    root.y0 = 0;
+
+    update(root);
+
+    d3.select(self.frameElement).style("height", "500px");
+
+    function update(source) {
+
+        // Compute the new tree layout.
+        var nodes = tree.nodes(root).reverse(),
+            links = tree.links(nodes);
+
+        // Normalize for fixed-depth.
+        nodes.forEach(function(d) { d.y = d.depth * 180; });
+
+        // Update the nodes…
+        var node = svg.selectAll("g.node")
+            .data(nodes, function(d) { return d.id || (d.id = ++i); });
+
+        // Enter any new nodes at the parent's previous position.
+        var nodeEnter = node.enter().append("g")
+            .attr("class", "node")
+            .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
+            .on("click", click);
+
+        nodeEnter.append("circle")
+            .attr("r", 1e-6)
+            .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+
+        nodeEnter.append("text")
+            .attr("x", function(d) { return d.children || d._children ? -13 : 13; })
+            .attr("dy", ".35em")
+            .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
+            .text(function(d) { return d.text; })
+            .style("fill-opacity", 1e-6);
+
+        // Transition nodes to their new position.
+        var nodeUpdate = node.transition()
+            .duration(duration)
+            .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
+
+        nodeUpdate.select("circle")
+            .attr("r", 10)
+            .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+
+        nodeUpdate.select("text")
+            .style("fill-opacity", 1);
+
+        // Transition exiting nodes to the parent's new position.
+        var nodeExit = node.exit().transition()
+            .duration(duration)
+            .attr("transform", function(d) { return "translate(" + source.y + "," + source.x + ")"; })
+            .remove();
+
+        nodeExit.select("circle")
+            .attr("r", 1e-6);
+
+        nodeExit.select("text")
+            .style("fill-opacity", 1e-6);
+
+        // Update the links…
+        var link = svg.selectAll("path.link")
+            .data(links, function(d) { return d.target.id; });
+
+        // Enter any new links at the parent's previous position.
+        link.enter().insert("path", "g")
+            .attr("class", "link")
+            .attr("d", function(d) {
+                var o = {x: source.x0, y: source.y0};
+                return diagonal({source: o, target: o});
+            });
+
+        // Transition links to their new position.
+        link.transition()
+            .duration(duration)
+            .attr("d", diagonal);
+
+        // Transition exiting nodes to the parent's new position.
+        link.exit().transition()
+            .duration(duration)
+            .attr("d", function(d) {
+                var o = {x: source.x, y: source.y};
+                return diagonal({source: o, target: o});
+            })
+            .remove();
+
+        // Stash the old positions for transition.
+        nodes.forEach(function(d) {
+            d.x0 = d.x;
+            d.y0 = d.y;
+        });
+    }
+
+    // Toggle children on click.
+    function click(d) {
+        if (d.children) {
+            d._children = d.children;
+            d.children = null;
+        } else {
+            d.children = d._children;
+            d._children = null;
+        }
+        update(d);
+    }
+
+
+</script>
+
+</body>
+
+</html>

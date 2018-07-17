@@ -1,0 +1,68 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Home</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="stylesheet" href="/webjars/bootstrap/3.3.7/css/bootstrap.min.css"/>
+    <!--<link href="http://code.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css" rel="Stylesheet"/>-->
+    <link rel="stylesheet" href="/css/main.css"/>
+
+</head>
+<body>
+    <div th:replace="fragments/header :: header"/>
+    <div class="container">
+    <div class="row">
+        <!--<div class="col-sm-7">-->
+                <div class="panel panel-primary">
+                    <div class="panel-heading">Name</div>
+                    <div class="panel-body">
+                        <p th:text="${name}"></p>
+                    </div>
+                </div>
+                <div class="panel panel-primary">
+                    <div class="panel-heading">Version</div>
+                    <div class="panel-body">
+                        <p th:text="${version}"></p>
+                    </div>
+                </div>
+
+            <div class="panel panel-primary">
+                <div class="panel-heading">Description</div>
+                <div class="panel-body">
+                    <ul  class="list-group" th:each="item : ${description}">
+                        <li class="list-group-item" th:text="${item}"></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="panel panel-primary">
+                <div class="panel-heading">Contributors</div>
+                <div class="panel-body">
+                    <ul class="list-group" th:each="item : ${contributors}">
+                        <li class="list-group-item" th:text="${item}"></li>
+                    </ul>
+                </div>
+            </div>
+
+
+        <!--</div>-->
+        <!--<div class="col-sm-5">-->
+            <!--<div class="panel panel-primary">-->
+                <!--<div class="panel-heading">Axiom Info</div>-->
+                <!--<div class="panel-body">-->
+                    <!--<ul class="list-group" th:each="item : ${axiomInfo}">-->
+                        <!--<li class="list-group-item" th:text="${item}"></li>-->
+                    <!--</ul>-->
+                <!--</div>-->
+            <!--</div>-->
+
+        <!--</div>-->
+    </div>
+    </div>
+</body>
+<script type="text/javascript" src="/webjars/jquery/2.2.4/jquery.min.js"></script>
+<script src="/webjars/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script>
+
+
+</script>
+</html>

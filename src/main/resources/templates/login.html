@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="#{login_title}"></title>
+    <link rel="stylesheet" href="/css/bootstrap.min.css"/>
+</head>
+<body>
+<form th:action="@{/registration}" method="get">
+    <button class="btn btn-md btn-warning btn-block" type="Submit" th:text="#{login_registration}"></button>
+</form>
+
+<div class="container">
+    <form th:action="@{/login}" method="POST" class="form-signin">
+        <h3 class="form-signin-heading" th:text="#{login_header}"></h3>
+        <br/>
+
+        <input type="text" class="form-control" name="name" placeholder="User Name" required="" autofocus="" /> <br/>
+        <input type="password" class="form-control" name="password" placeholder="Password" required=""/><br />
+
+        <div align="center" th:if="${param.error}">
+            <p style="font-size:20; color: #FF1C19;" th:text="#{login_error}"></p>
+        </div>
+        <button class="btn btn-lg btn-primary btn-block" name="Submit" value="Login" type="Submit" th:text="Login"></button>
+    </form>
+</div>
+</body>
+</html>
+
