@@ -9,11 +9,8 @@ import org.semanticweb.owlapi.reasoner.OWLReasoner;
 import org.semanticweb.owlapi.search.EntitySearcher;
 import org.semanticweb.owlapi.util.OWLEntityRenamer;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
-import uk.ac.manchester.cs.owl.owlapi.OWLDatatypeImpl;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 
@@ -28,7 +25,7 @@ public class ClassService {
     private final OWLOntology ontology;
     private final AxiomHandler axiomHandler;
     private final Map<String,ClassKeeper> classKeeper;
-
+    private final OWLReasoner pelletReasoner;
     private List<String> classList;
     private List<String> individualList;
     private List<String> dataTypeList;
@@ -36,11 +33,12 @@ public class ClassService {
     private String treeString=null;
 
     @Autowired
-    public ClassService(OWLReasoner structuralReasoner,OWLOntology ontology, AxiomHandler axiomHandler, Map<String, ClassKeeper> classKeeper) {
+    public ClassService(OWLReasoner structuralReasoner, OWLOntology ontology, AxiomHandler axiomHandler, Map<String, ClassKeeper> classKeeper, OWLReasoner pelletReasoner) {
         this.structuralReasoner = structuralReasoner;
         this.ontology = ontology;
         this.axiomHandler = axiomHandler;
         this.classKeeper = classKeeper;
+        this.pelletReasoner = pelletReasoner;
         try {
             printHierarchy(ontology.getOWLOntologyManager().getOWLDataFactory().getOWLThing());
         } catch (OWLException e) {
@@ -52,7 +50,7 @@ public class ClassService {
         return classKeeper.get(owlClz);
     }
 
-    public boolean removeAnnotation(int index, String owlClass) throws Exception {
+    public boolean removeAnnotation(int index, String owlClass, String description) throws Exception {
         Set<OWLAnnotation> annotations = (Set<OWLAnnotation>) EntitySearcher.getAnnotations(axiomHandler.getOWLEntity(owlClass,EntityType.CLASS).getIRI(), ontology);
         OWLAnnotation toRemove = annotations.stream().filter(a->a.getValue().asLiteral().asSet().iterator().next().getLiteral().equals(classKeeper.get(owlClass).getAnnotations().get(index).getValue())).findFirst().get();
         ontology.getOWLOntologyManager().applyChange(new RemoveAxiom(ontology,ontology.getOWLOntologyManager().getOWLDataFactory().getOWLAnnotationAssertionAxiom(axiomHandler.getOWLEntity(owlClass,EntityType.CLASS).getIRI(), toRemove)));
@@ -62,18 +60,18 @@ public class ClassService {
         TempChangesKeeper changesKeeper = new TempChangesKeeper(
                 null,
                 null,
-                new ArrayList<OWLAnnotation>().add(toRemove),
-                LocalDateTime.now(),
-                EChangeType.ADD,
+                new ArrayList<OWLAnnotation>(){{add(toRemove);}},
+                new Date(),
+                EChangeType.DELETE,
                 owlClass,
                 EConceptType.OWL_CLASS,
                 description
-                );
-
+        );
+        DBService.getChanges().add(changesKeeper);
         return axiomHandler.checkConsistency();
     }
 
-    public boolean addAnnotation(String key, String value, String owlClass) throws Exception {
+    public boolean addAnnotation(String key, String value, String owlClass, String description) throws Exception {
         OWLAnnotationProperty property;
         switch (key) {
             case "comment":
@@ -114,6 +112,18 @@ public class ClassService {
 
         ontology.getOWLOntologyManager().saveOntology(ontology);
         classKeeper.get(owlClass).getAnnotations().add(new AnnotationKeeper(property.getIRI().getShortForm(), value));
+
+        TempChangesKeeper changesKeeper = new TempChangesKeeper(
+                null,
+                null,
+                new ArrayList<OWLAnnotation>(){{add(pA);}},
+                new Date(),
+                EChangeType.ADD,
+                owlClass,
+                EConceptType.OWL_CLASS,
+                description
+        );
+        DBService.getChanges().add(changesKeeper);
         return axiomHandler.checkConsistency();
     }
 
@@ -227,7 +237,7 @@ public class ClassService {
 
     
 
-    public boolean deleteClass(String owlClass) throws Exception {
+    public boolean deleteClass(String owlClass,String description) throws Exception {
 
         Set<OWLAxiom> toRemove = new HashSet<>();
         for (OWLAxiom select : ontology.getAxioms())
@@ -240,22 +250,34 @@ public class ClassService {
        
         axiomHandler.addToAxiomQueue(toRemove);
 
-
-//        UtilMethods.removedInstances = pelletReasoner.getInstances(owlClass,true).getFlattened();
-//        UtilMethods.removedAnnotations = (Set<OWLAnnotation>) EntitySearcher.getAnnotations(owlClass, ontology);
-
         ontology.getOWLOntologyManager().removeAxioms(ontology, toRemove);
         ontology.getOWLOntologyManager().saveOntology(ontology);
 
-        classKeeper.remove(owlClass);
-        getClassTree(true);
-        return axiomHandler.checkConsistency();
+        boolean con = axiomHandler.checkConsistency();
+        if(con){
+            classKeeper.remove(owlClass);
+            getClassTree(true);
+            TempChangesKeeper changesKeeper = new TempChangesKeeper(
+                    new ArrayList<OWLAxiom>(){{addAll(toRemove);}},
+                    new ArrayList<OWLNamedIndividual>(){{
+                        addAll(pelletReasoner.getInstances((OWLClassExpression) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS),true).getFlattened());}},
+                    new ArrayList<OWLAnnotation>(){{
+                        addAll(EntitySearcher.getAnnotations(axiomHandler.getOWLEntity(owlClass,EntityType.CLASS), ontology));}},
+                    new Date(),
+                    EChangeType.DELETE,
+                    owlClass,
+                    EConceptType.OWL_CLASS,
+                    description
+            );
+            DBService.getChanges().add(changesKeeper);
+        }
+        return con;
     }
 
     public boolean addClassAxiom(DataTransfer transfer, int cOrEq) throws Exception {
 
         OWLAxiom axiom ;
-        OWLClass childC = (OWLClass) axiomHandler.getOWLEntity(transfer.getCurrentClass(),EntityType.CLASS);
+        OWLClass childC = (OWLClass) axiomHandler.getOWLEntity(transfer.getcConcept(),EntityType.CLASS);
         OWLClass parent=getParent(childC);
 
         switch (transfer.getPatternType()) {
@@ -380,8 +402,6 @@ public class ClassService {
                 break;
             }
             default: {
-                System.out.println("come");
-
                 OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(transfer.getoProperties().get(0),EntityType.OBJECT_PROPERTY);
                 OWLObjectCardinalityRestriction cardinality;
                 if (transfer.getCardinalityType().equals("min")) {
@@ -406,23 +426,33 @@ public class ClassService {
                 break;
             }
         }
-        System.out.println(axiom);
-        RestrictionKeeper keeper = new RestrictionKeeper(UtilMethods.convertAxiom(axiom),axiom);
 
+        RestrictionKeeper keeper = new RestrictionKeeper(UtilMethods.convertAxiom(axiom),axiom);
         boolean con= axiomHandler.addAxiom(axiom);
 
         if(con){
             if(cOrEq==0){
-                classKeeper.get(transfer.getCurrentClass()).getSubClassRestrictions().add(keeper);
+                classKeeper.get(transfer.getcConcept()).getSubClassRestrictions().add(keeper);
                 getClassTree(true);
             }else{
-                classKeeper.get(transfer.getCurrentClass()).getEqClassRestrictions().add(keeper);
+                classKeeper.get(transfer.getcConcept()).getEqClassRestrictions().add(keeper);
             }
+
+            TempChangesKeeper changesKeeper = new TempChangesKeeper(
+                    new ArrayList<OWLAxiom>(){{add(axiom);}},
+                    null,
+                    null,
+                    new Date(),
+                    EChangeType.ADD,
+                    transfer.getcConcept(),
+                    EConceptType.OWL_CLASS,
+                    transfer.getDescription()
+            );
+            DBService.getChanges().add(changesKeeper);
         }
 
         return con;
     }
-
 
     public OWLClass getParent(OWLClass clz) {
         Set<OWLClass> classes = ontology.getClassesInSignature();
@@ -457,22 +487,40 @@ public class ClassService {
         return rangeOf;
     }
 
-    public boolean addOrRemoveDisjointClass(String clz, String dClz, int addOrRemove) throws Exception {
-        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(clz,EntityType.CLASS);
+    public boolean addOrRemoveDisjointClass(String owlClass, String dClz, int addOrRemove, String description) throws Exception {
+        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
         OWLClass dis = (OWLClass) axiomHandler.getOWLEntity(dClz,EntityType.CLASS);
         OWLAxiom dja = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLDisjointClassesAxiom(current,dis);
+        boolean con;
+        EChangeType type;
         if(addOrRemove==1){
-            return axiomHandler.addAxiom(dja);
+            con =  axiomHandler.addAxiom(dja);
+            type = EChangeType.ADD;
         }else{
-            return axiomHandler.removeAxiom(dja);
+            con =  axiomHandler.removeAxiom(dja);
+            type =EChangeType.DELETE;
         }
 
+        if(con){
+            TempChangesKeeper changesKeeper = new TempChangesKeeper(
+                    new ArrayList<OWLAxiom>(){{add(dja);}},
+                    null,
+                    null,
+                    new Date(),
+                    type,
+                    owlClass,
+                    EConceptType.OWL_CLASS,
+                    description
+            );
+            DBService.getChanges().add(changesKeeper);
+        }
+        return con;
     }
 
 //1=add
-    public boolean addOrRemoveDomainOf(String clz, String prop, int addOrRemove) throws Exception {
+    public boolean addOrRemoveDomainOf(String owlClass, String prop, int addOrRemove, String description) throws Exception {
 
-        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(clz,EntityType.CLASS);
+        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
 
         OWLAxiom axiom;
         if(ontology.containsObjectPropertyInSignature(axiomHandler.getIRI(prop))){
@@ -482,29 +530,51 @@ public class ClassService {
             OWLDataProperty property = (OWLDataProperty) axiomHandler.getOWLEntity(prop,EntityType.DATA_PROPERTY);
             axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLDataPropertyDomainAxiom(property,current);
         }
+        boolean con;
+        EChangeType type;
         if(addOrRemove==1){
-            return axiomHandler.addAxiom(axiom);
+            con =  axiomHandler.addAxiom(axiom);
+            type=EChangeType.ADD;
         }else{
-            return axiomHandler.removeAxiom(axiom);
+            con =  axiomHandler.removeAxiom(axiom);
+            type = EChangeType.DELETE;
         }
 
-
+        if(con){
+            TempChangesKeeper changesKeeper = new TempChangesKeeper(
+                    new ArrayList<OWLAxiom>(){{add(axiom);}},null,null, new Date(), type,
+                    owlClass, EConceptType.OWL_CLASS, description);
+            DBService.getChanges().add(changesKeeper);
+        }
+        return con;
     }
 
-    public boolean addOrRemoveRangeOf(String clz, String prop, int addOrRemove) throws Exception {
+    public boolean addOrRemoveRangeOf(String owlClass, String prop, int addOrRemove, String description) throws Exception {
 
-        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(clz,EntityType.CLASS);
+        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
         OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(prop,EntityType.OBJECT_PROPERTY);
         OWLAxiom axiom= ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectPropertyRangeAxiom(property,current);
 
+        boolean con;
+        EChangeType type;
         if(addOrRemove==0){
-            return axiomHandler.removeAxiom(axiom);
+            con = axiomHandler.removeAxiom(axiom);
+            type = EChangeType.DELETE;
         }else{
-           return axiomHandler.addAxiom(axiom);
+           con =  axiomHandler.addAxiom(axiom);
+           type = EChangeType.ADD;
         }
+
+        if(con){
+            TempChangesKeeper changesKeeper = new TempChangesKeeper(
+                    new ArrayList<OWLAxiom>(){{add(axiom);}},null,null, new Date(), type,
+                    owlClass, EConceptType.OWL_CLASS, description);
+            DBService.getChanges().add(changesKeeper);
+        }
+        return con;
     }
 
-    public boolean renameIRI(String entity, String newName) throws OWLException {
+    public boolean renameIRI(String entity, String newName, String description) throws OWLException {
 
         IRI entityToRename = axiomHandler.getIRI(entity);
         IRI newNameIRI= axiomHandler.getIRI(newName);
@@ -523,20 +593,58 @@ public class ClassService {
             classKeeper.remove(entity);
             k.setClassName(newName);
             classKeeper.put(newName,k);
+
+            TempChangesKeeper changesKeeper = new TempChangesKeeper(
+                    null,null,null, new Date(), EChangeType.UPDATE, entity,
+                    EConceptType.OWL_CLASS,description);
+            DBService.getChanges().add(changesKeeper);
             return true;
         }
         return false;
     }
 
-    public boolean removeSubClassOfAxiom(String className, int id) throws Exception {
-        axiomHandler.removeAxiom(classKeeper.get(className).getSubClassRestrictions().get(id).getAxiomObj());
-        classKeeper.get(className).getSubClassRestrictions().remove(id);
-        return axiomHandler.checkConsistency();
+    public boolean removeSubClassOfAxiom(String owlClass, int id, String description) throws Exception {
+        OWLAxiom axiom =classKeeper.get(owlClass).getSubClassRestrictions().get(id).getAxiomObj();
+        axiomHandler.removeAxiom(axiom);
+        classKeeper.get(owlClass).getSubClassRestrictions().remove(id);
+        boolean con =  axiomHandler.checkConsistency();
+
+        if(con){
+            TempChangesKeeper changesKeeper = new TempChangesKeeper(
+                    new ArrayList<OWLAxiom>(){{add(axiom);}},
+                    null,
+                    null,
+                    new Date(),
+                    EChangeType.DELETE,
+                    owlClass,
+                    EConceptType.OWL_CLASS,
+                    description
+            );
+            DBService.getChanges().add(changesKeeper);
+        }
+        return con;
     }
 
-    public boolean removeEqClassOfAxiom(String className, int id) throws Exception {
-        axiomHandler.removeAxiom(classKeeper.get(className).getEqClassRestrictions().get(id).getAxiomObj());
-        classKeeper.get(className).getEqClassRestrictions().remove(id);
-        return axiomHandler.checkConsistency();
+    public boolean removeEqClassOfAxiom(String owlClass, int id, String description) throws Exception {
+        OWLAxiom axiom =classKeeper.get(owlClass).getEqClassRestrictions().get(id).getAxiomObj();
+        axiomHandler.removeAxiom(axiom);
+        classKeeper.get(owlClass).getEqClassRestrictions().remove(id);
+        boolean con =  axiomHandler.checkConsistency();
+
+        if(con){
+            TempChangesKeeper changesKeeper = new TempChangesKeeper(
+                    new ArrayList<OWLAxiom>(){{add(axiom);}},
+                    null,
+                    null,
+                    new Date(),
+                    EChangeType.DELETE,
+                    owlClass,
+                    EConceptType.OWL_CLASS,
+                    description
+            );
+            DBService.getChanges().add(changesKeeper);
+        }
+        return con;
     }
+
 }

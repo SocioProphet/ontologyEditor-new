@@ -55,17 +55,17 @@ public class DataPropertyController {
     public ResponseEntity<?> addDataProperty(@ModelAttribute DataTransfer transfer, Errors errors, HttpSession session) throws Exception {
        boolean result;
         if(transfer.getoProperties().get(0).equals("topDataProperty")){
-            result = dataPropertyService.addDProperty(transfer.getCurrentClass());
+            result = dataPropertyService.addDProperty(transfer.getcConcept());
         }else{
-            result = dataPropertyService.addSubDProperty(transfer.getCurrentClass(),transfer.getoProperties().get(0));
+            result = dataPropertyService.addSubDProperty(transfer.getcConcept(),transfer.getoProperties().get(0));
         }
         if(transfer.getClassList()!=null && !transfer.getClassList().isEmpty()){
             if(transfer.getClassList().get(0).equals("F")){
-                dataPropertyService.addFunctionalDProperty(transfer.getCurrentClass());
+                dataPropertyService.addFunctionalDProperty(transfer.getcConcept());
 
             }
         }
-        session.setAttribute("currentDP",transfer.getCurrentClass());
+        session.setAttribute("currentDP",transfer.getcConcept());
        // new ClassController().updateVersion(session,transfer,dbService,"currentDP");
 
         return ResponseEntity.ok(result);

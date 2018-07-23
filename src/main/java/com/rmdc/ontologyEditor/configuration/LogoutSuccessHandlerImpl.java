@@ -3,6 +3,7 @@ package com.rmdc.ontologyEditor.configuration;
 import com.rmdc.ontologyEditor.service.DBService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.stereotype.Component;
 
@@ -23,8 +24,8 @@ public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler {
     @Override
     public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
 
-        String author = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        dbService.updateDatabase(author);
+        User author = (User) authentication.getPrincipal();
+        dbService.updateDatabase(author.getUsername());
         response.sendRedirect("/login");
     }
 }

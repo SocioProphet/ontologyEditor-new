@@ -122,7 +122,7 @@
             </div>
             <div class="modal-body" style="padding:40px 50px;">
                 <form th:action="@{/addDisjoint}" method="post" th:object="${transfer}" name="addAxiom">
-                    <input type="hidden" th:value="${session.currentClass}" name="currentClass"/>
+                    <input type="hidden" th:value="${session.currentClass}" name="cConcept"/>
                     <div class="form-group"><label>Select Disjoint Class</label><select class="form-control" id="nonDis" name="classList"></select></div>
                     <div class="form-group">
                         <button type="submit" class="btn btn-success btn-block"> Add Disjoint Axiom </button>
@@ -141,7 +141,7 @@
             </div>
             <div class="modal-body" style="padding:40px 50px;">
                 <form th:action="@{/addDomainOf}" method="post" th:object="${transfer}" name="addAxiom">
-                    <input type="hidden" th:value="${session.currentClass}" name="currentClass"/>
+                    <input type="hidden" th:value="${session.currentClass}" name="cConcept"/>
                     <div class="form-group"><label>Select Property</label><select class="form-control" id="domainProperty" name="oProperties"></select></div>
                     <div class="form-group">
                         <button type="submit" class="btn btn-success btn-block"> Add Disjoint Axiom </button>
@@ -160,9 +160,9 @@
                 <h4>Add Annotation</h4>
             </div>
             <div class="modal-body" style="padding:40px 50px;">
-                <form th:action="@{/addAnnotaton}" method="post" th:object="${transfer}" name="addAxiom">
+                <form th:action="@{/addAnnotation}" method="post" th:object="${transfer}" name="addAxiom">
                     <div class="form-group"><label>Select Annotation Type</label>
-                        <select class="form-control" name="oProperties">
+                        <select class="form-control" name="aProperty">
                             <option th:value="comment">Comment</option>
                             <option th:value="isDefinedBy">Is Defined By</option>
                             <option th:value="label">Label</option>
@@ -173,6 +173,9 @@
                             <option th:value="versionInfo">Version Info</option>
                         </select></div>
                     <div class="form-group"><label>Enter the Value for The Annotation</label>
+                        <textarea class="form-control" rows="5" th:field="*{aValue}"></textarea>
+                    </div>
+                    <div class="form-group"><label>Description</label>
                         <textarea class="form-control" rows="5" th:field="*{description}"></textarea>
                     </div>
                     <div class="form-group">
@@ -214,7 +217,7 @@
             </div>
             <div class="modal-body" style="padding:40px 50px;">
                 <form th:action="@{/addRangeOf}" method="post" th:object="${transfer}" name="addAxiom">
-                    <input type="hidden" th:value="${session.currentClass}" name="currentClass"/>
+                    <input type="hidden" th:value="${session.currentClass}" name="cConcept"/>
                     <div class="form-group"><label>Select Property</label><select class="form-control" id="rangeProperty" name="oProperties"></select></div>
                     <div class="form-group">
                         <button type="submit" class="btn btn-success btn-block"> Add Disjoint Axiom </button>
@@ -236,7 +239,7 @@
                 <form action="#" id="add-form" th:action="@{/addNewClass}" th:object="${transfer}" method="post" name="addForm">
                     <div class="form-group">
                         <label>Name</label>
-                        <input type="text" th:field="*{currentClass}" class="form-control" />
+                        <input type="text" th:field="*{cConcept}" class="form-control" />
                     </div>
                     <div class="form-group">
                         <label>Parent</label>

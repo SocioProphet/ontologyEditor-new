@@ -112,14 +112,14 @@ public class ObjectPropertyController {
             return ResponseEntity.ok(result);
         }        
         if(transfer.getoProperties().get(0).equals("topObjectProperty")){
-            objectPropertyService.addOProperty(transfer.getCurrentClass());
+            objectPropertyService.addOProperty(transfer.getcConcept());
 
 //            if(.consistent==1){
 //                session.setAttribute("currentOP",transfer.getCurrentClass());
 //                dbService.addObjectProperty((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
 //            }
         }else{
-            objectPropertyService.addSubOProperty(transfer.getCurrentClass(),transfer.getoProperties().get(0));
+            objectPropertyService.addSubOProperty(transfer.getcConcept(),transfer.getoProperties().get(0));
 //            if(UtilMethods.consistent==1){
 //                session.setAttribute("currentOP",transfer.getCurrentClass());
 //                dbService.addObjectProperty((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
@@ -128,37 +128,37 @@ public class ObjectPropertyController {
 
         for(String s:transfer.getClassList()){
             if(s.equals("F")){
-                objectPropertyService.addFunctionalProperty(transfer.getCurrentClass());
+                objectPropertyService.addFunctionalProperty(transfer.getcConcept());
 //                if(UtilMethods.consistent==1){
 //                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
 //                }
             }else if(s.equals("IF")){
-                objectPropertyService.addInverseFunctionalProperty(transfer.getCurrentClass());
+                objectPropertyService.addInverseFunctionalProperty(transfer.getcConcept());
 //                if(UtilMethods.consistent==1){
 //                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
 //                }
             }else if(s.equals("T")){
-                objectPropertyService.addTransitiveProperty(transfer.getCurrentClass());
+                objectPropertyService.addTransitiveProperty(transfer.getcConcept());
 //                if(UtilMethods.consistent==1){
 //                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
 //                }
             }else if(s.equals("S")){
-                objectPropertyService.addSymmetricProperty(transfer.getCurrentClass());
+                objectPropertyService.addSymmetricProperty(transfer.getcConcept());
 //                if(UtilMethods.consistent==1){
 //                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
 //                }
             }else if(s.equals("AS")){
-                objectPropertyService.addAsymmetricProperty(transfer.getCurrentClass());
+                objectPropertyService.addAsymmetricProperty(transfer.getcConcept());
 //                if(UtilMethods.consistent==1){
 //                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
 //                }
             }else if(s.equals("R")){
-                objectPropertyService.addReflexiveProperty(transfer.getCurrentClass());
+                objectPropertyService.addReflexiveProperty(transfer.getcConcept());
 //                if(UtilMethods.consistent==1){
 //                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
 //                }
             }else{
-                objectPropertyService.addIreflexiveProperty(transfer.getCurrentClass());
+                objectPropertyService.addIreflexiveProperty(transfer.getcConcept());
 //                if(UtilMethods.consistent==1){
 //                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
 //                }
@@ -178,7 +178,7 @@ public class ObjectPropertyController {
 //        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 //        org.springframework.security.core.userdetails.User user = (User) auth.getPrincipal();
 
-        if(transfer.getCurrentClass().equals("F")){
+        if(transfer.getcConcept().equals("F")){
             if(objectPropertyService.isFunctional(prop)){
                 result =objectPropertyService.removeFunctionalProperty(prop);
 //                if(UtilMethods.consistent==1){
@@ -193,7 +193,7 @@ public class ObjectPropertyController {
             }
             return  ResponseEntity.ok(result);
         }
-        if(transfer.getCurrentClass().equals("IF")){
+        if(transfer.getcConcept().equals("IF")){
             if(objectPropertyService.isInverseFunctional(prop)){
                 result =objectPropertyService.removeInverseFunctionalProperty(prop);
 //                if(UtilMethods.consistent==1){
@@ -208,7 +208,7 @@ public class ObjectPropertyController {
             }
             return  ResponseEntity.ok(result);
         }
-        if(transfer.getCurrentClass().equals("T")){
+        if(transfer.getcConcept().equals("T")){
             if(objectPropertyService.isTransitive(prop)){
                 result =objectPropertyService.removeTransitiveProperty(prop);
 //                if(UtilMethods.consistent==1){
@@ -222,7 +222,7 @@ public class ObjectPropertyController {
             }
             return  ResponseEntity.ok(result);
         }
-        if(transfer.getCurrentClass().equals("S")){
+        if(transfer.getcConcept().equals("S")){
             if(objectPropertyService.isSymmetric(prop)){
                 result = objectPropertyService.removeSymetricProperty(prop);
 //                if(UtilMethods.consistent==1){
@@ -236,7 +236,7 @@ public class ObjectPropertyController {
             }
             return  ResponseEntity.ok(result);
         }
-        if(transfer.getCurrentClass().equals("AS")){
+        if(transfer.getcConcept().equals("AS")){
             if(objectPropertyService.isAsymmetric(prop)){
                 result =objectPropertyService.removeAsymetricProperty(prop);
 //                if(UtilMethods.consistent==1){
@@ -250,7 +250,7 @@ public class ObjectPropertyController {
             }
             return  ResponseEntity.ok(result);
         }
-        if(transfer.getCurrentClass().equals("R")){
+        if(transfer.getcConcept().equals("R")){
             if(objectPropertyService.isReflexive(prop)){
                 result =objectPropertyService.removeReflexiveProperty(prop);
 //                if(UtilMethods.consistent==1){
@@ -264,7 +264,7 @@ public class ObjectPropertyController {
             }
             return  ResponseEntity.ok(result);
         }
-        if(transfer.getCurrentClass().equals("IR")){
+        if(transfer.getcConcept().equals("IR")){
             if(objectPropertyService.isIrreflexive(prop)){
                 result =objectPropertyService.removeIreflexiveProperty(prop);
 //                if(UtilMethods.consistent==1){

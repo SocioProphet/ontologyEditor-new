@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -47,7 +48,10 @@ public class DBService {
         this.changeAnnotationRepository = changeAnnotationRepository;
     }
 
-    public static List<TempChangesKeeper> getChanges() {
+    static List<TempChangesKeeper> getChanges() {
+        if(changes==null){
+            changes = new ArrayList<>();
+        }
         return DBService.changes;
     }
 
@@ -56,6 +60,7 @@ public class DBService {
     }
 
     public void updateDatabase(String author){
+        if(changes==null) return;
         User u = userRepository.findUserByName(author);
         for (TempChangesKeeper change:changes) {
             ChangeType type = changeTypeRepository.findChangeTypeById(change.geteChangeType().getChangeType());
@@ -72,6 +77,9 @@ public class DBService {
            // ontoChange.setChangeAxiom(UtilMethods.convertAxiom(axiom)); //no need
             ontoChange.setTimestamp(new Timestamp(System.currentTimeMillis()));
 
+            ontoChangeRepository.save(ontoChange);
+
+            if(change.getAxioms()!=null)
             for(OWLAxiom axiom:change.getAxioms()){
                 ChangeDes changeDes = new ChangeDes();
                 changeDes.setOntoChange(ontoChange);
@@ -79,6 +87,8 @@ public class DBService {
                 changeDes.setObject(UtilMethods.toByts(axiom));
                 changeDesRepository.save(changeDes);
             }
+
+            if(change.getIndividuals()!=null)
             for(OWLNamedIndividual i: change.getIndividuals()){
                 ChangeInstances instances= new ChangeInstances();
                 instances.setOntoChange(ontoChange);
@@ -86,7 +96,7 @@ public class DBService {
                 instances.setDescription(i.getIRI().getShortForm());
                 changeInstancesRepository.save(instances);
             }
-
+            if(change.getAnnotations()!=null)
             for (OWLAnnotation annotation : change.getAnnotations()) {
                 ChangeAnnotation changeAnnotation = new ChangeAnnotation();
                 changeAnnotation.setOntoChange(ontoChange);
