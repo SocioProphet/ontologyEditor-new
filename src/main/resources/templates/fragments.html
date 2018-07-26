@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div th:fragment="functionBlock" class="col-sm-9 col-md-9 col-lg-9 tree well well-sm" th:if="${session.currentClass} != 'Thing'" id="editFrag">
+
+    <div id="errorMsg"></div>
+    <div class="panel panel-info">
+        <div class="panel-heading"><p style="display:inline;" th:text="${session.currentClass}"></p>
+
+            <a href="#" data-toggle="modal" data-target="#rename"><span class="glyphicon glyphicon-pencil fa-md " style="float:  right; font-size:  23px; margin-top:  -3px;"/></a>
+            <a href="#" data-toggle="modal" data-target="#addAnnotation"><span class="glyphicon glyphicon-plus fa-md " style="font-size: 24px; float: right; margin-top: -4px;"/></a>
+            <a href="#" onclick="changeAction('/removeClass');" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right" style="margin-top:  -8px;"/></a>
+        </div>
+        <div class="panel-body">
+            <ul  class="list-group" >
+                <li class="list-group-item" th:each="ann,iterStat : ${annotations}">
+
+                    <span th:text="${ann.property}" style="color: #74a9d6"></span>
+
+                    <span th:text="${ann.value}"></span>
+                    <a href="#" th:onclick="'javascript:changeAction(\'/removeAnnotation/'+${iterStat.index}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+
+                    <!--<span th:text="${someVar}">Grrr!!!</span>-->
+
+
+                    <!--<span th:text="${ann.getValue()}">Grrr!!!</span>-->
+                    <!--<a href="#" th:onclick="'javascript:changeAction(\'/removeSubClassOfAxiom/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>-->
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div id="subClasses" class="panel panel-info">
+        <div class="panel-heading">Sub Class Axioms<a onclick="loadClassData(); changeAAction('/addSubClassAxiom');" href="#" class="pull-right" data-toggle="modal" data-target="#addSEAxiom" id="addSub"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
+
+        <div class="panel-body" th:if="${subClasses != null}">
+            <ul  class="list-group" >
+                <li class="list-group-item" th:each="item,iterStat : ${subClasses}">
+                    <span th:text="${item.axiom}">Grrr!!!</span>
+                    <a href="#" th:onclick="'javascript:changeAction(\'/removeSubClassOfAxiom/'+${iterStat.index}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div id="equivalentClasses" class="panel panel-info">
+        <div class="panel-heading">Equivalent Class Axioms<a onclick="loadClassData(); changeAAction('/addEqClassAxiom');" href="#" class="pull-right" data-toggle="modal" data-target="#addSEAxiom" id="addEq"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
+        <div class="panel-body" th:if="${eqClasses != null}">
+            <ul class="list-group" >
+                <li class="list-group-item" th:each="item,iterStat : ${eqClasses}">
+                    <span th:text="${item.axiom}">Grrr!!!</span>
+                    <a href="#" th:onclick="'javascript:changeAction(\'/removeEqClassOfAxiom/'+${iterStat.index}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="disjointClasses" class="panel panel-info">
+        <div class="panel-heading">Disjoint Classes<a onclick="getNonDisjointClasses()" href="#" class="pull-right" data-toggle="modal" data-target="#addDjAxiom" id="addDj"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
+        <div class="panel-body" th:if="${djClasses != null}">
+            <ul class="list-group" >
+                <li class="list-group-item" th:each="item : ${djClasses}">
+                    <span th:text="${item}">Grrr!!!</span>
+                    <a href="#" th:onclick="'javascript:changeAction(\'/removeDisjointAxiom/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div id="domainOf" class="panel panel-info">
+        <div class="panel-heading">Domain of<a onclick="getDomainOfData()" href="#" class="pull-right" data-toggle="modal" data-target="#domain" id="addDomain"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
+        <div class="panel-body" th:if="${domainOf != null}">
+            <ul class="list-group" >
+                <li class="list-group-item" th:each="item : ${domainOf}">
+                    <span th:text="${item}">Grrr!!!</span>
+                    <a href="#" th:onclick="'javascript:changeAction(\'/removeDomainOf/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                </li>
+            </ul>
+        </div>
+
+    </div>
+    <div id="rangeOf" class="panel panel-info">
+        <div class="panel-heading">Range of <a onclick="getRangeOfData()" href="#" class="pull-right" data-toggle="modal" data-target="#range" id="addRange"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
+        <div class="panel-body" th:if="${rangeOf != null}">
+            <ul class="list-group" >
+                <li class="list-group-item" th:each="item : ${rangeOf}">
+                    <span th:text="${item}">Grrr!!!</span>
+                    <a href="#" th:onclick="'javascript:changeAction(\'/removeRangeOf/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -25,6 +25,11 @@ public class ClassConfig {
     @Bean
     public Map<String,ClassKeeper> classKeeper(){
         Map<String,ClassKeeper> keeper = new TreeMap<>();
+        addTOMap(keeper);
+        return keeper;
+    }
+
+    public void addTOMap(Map<String,ClassKeeper> keeper){
         Set<OWLClass> classSet = ontology.getClassesInSignature();
         classSet.forEach(c->{
             ClassKeeper ck = new ClassKeeper();
@@ -37,10 +42,8 @@ public class ClassConfig {
             ck.setAnnotations(getAnnotations(c));
             keeper.put(c.getIRI().getShortForm(),ck);
         });
-
-
-        return keeper;
     }
+
     private List<AnnotationKeeper> getAnnotations(OWLClass owlClass){
         List<AnnotationKeeper> ann = new ArrayList<>();
         Set<OWLAnnotation> annotations = (Set<OWLAnnotation>) EntitySearcher.getAnnotations(owlClass.getIRI(), ontology);
@@ -67,7 +70,7 @@ public class ClassConfig {
         return subRestrictionList;
     }
 
-    public List<String> getDomainOf(OWLClass owlClass){
+    private List<String> getDomainOf(OWLClass owlClass){
         List<String> domainOf = new ArrayList<>();
         for(OWLObjectProperty p: ontology.getObjectPropertiesInSignature()){
             Set<OWLObjectPropertyDomainAxiom> da = ontology.getObjectPropertyDomainAxioms(p);
@@ -80,7 +83,7 @@ public class ClassConfig {
         return domainOf;
     }
 
-    public List<String> getRangeOf(OWLClass owlClass){
+    private List<String> getRangeOf(OWLClass owlClass){
         List<String> rangeOf = new ArrayList<>();
         for(OWLObjectProperty p: ontology.getObjectPropertiesInSignature()){
             Set<OWLObjectPropertyRangeAxiom> da = ontology.getObjectPropertyRangeAxioms(p);
@@ -93,7 +96,7 @@ public class ClassConfig {
         return rangeOf;
     }
 
-    public List<String> getDisjointAxioms(OWLClass owlClass){
+    private List<String> getDisjointAxioms(OWLClass owlClass){
         List<String> axioms = new ArrayList<>();
         Set<OWLDisjointClassesAxiom> sx = ontology.getDisjointClassesAxioms(owlClass);
         for(OWLDisjointClassesAxiom a:sx){
