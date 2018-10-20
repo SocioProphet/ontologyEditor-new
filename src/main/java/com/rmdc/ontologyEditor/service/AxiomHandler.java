@@ -1,6 +1,5 @@
 package com.rmdc.ontologyEditor.service;
 
-
 import org.semanticweb.owlapi.io.OWLObjectRenderer;
 import org.semanticweb.owlapi.manchestersyntax.renderer.ManchesterOWLSyntaxOWLObjectRendererImpl;
 import org.semanticweb.owlapi.model.*;
@@ -29,12 +28,6 @@ public class AxiomHandler {
     }
 
 
-    public String manchesterExplainer(OWLAxiom axiomToExplain) {
-        OWLObjectRenderer renderer = new ManchesterOWLSyntaxOWLObjectRendererImpl();
-        return renderer.render(axiomToExplain);
-
-    }
-
     public boolean checkConsistency() throws Exception {
         ontology.getOWLOntologyManager().addOntologyChangeListener((OWLOntologyChangeListener) pelletReasoner);
 
@@ -45,8 +38,6 @@ public class AxiomHandler {
         System.out.println( "Consistent? " + consistent + " (" + (e - s) + "ms)" );
 
         return consistent;
-
-
     }
 
     public OWLEntity getOWLEntity(String name,EntityType entityType){
@@ -65,22 +56,13 @@ public class AxiomHandler {
             AddAxiom addAxiom = new AddAxiom(ontology, axiom);
             ontology.getOWLOntologyManager().applyChange(addAxiom);
         } else {
-            axiomsQueue.add(axiom);
-
-//            ChangeKeeper changeKeeper = new ChangeKeeper();
-//            List<OWLAxiomChange> changes = new ArrayList<>();
-//            changes.add(new AddAxiom(ontology, axiom));
-//            changeKeeper.setChangeQueue(changes);
-//            changeQueue.add(changeKeeper);
-
+            axiomsQueue.add(axiom);//todo: this should be changed for use in undo operation, add opposite axiom type to queue
         }
         ontology.getOWLOntologyManager().saveOntology(ontology);
         return consistent;
     }
 
     public boolean addAxiom(OWLAxiom axiom) throws Exception {
-
-
         AddAxiom addAxiom = new AddAxiom(ontology, axiom);
         ontology.getOWLOntologyManager().applyChange(addAxiom);
         long startTime = System.currentTimeMillis();
@@ -91,18 +73,11 @@ public class AxiomHandler {
         if (!consistent) {
             RemoveAxiom removeAxiom = new RemoveAxiom(ontology, axiom);
             ontology.getOWLOntologyManager().applyChange(removeAxiom);
-        } else {
+        }else{
             axiomsQueue = new ArrayList<>();
             axiomsQueue.add(axiom);
 
-//            ChangeKeeper changeKeeper = new ChangeKeeper();
-//            List<OWLAxiomChange> changes = new ArrayList<>();
-//            changes.add(new RemoveAxiom(Init.getOntology(), axiom));
-//            changeKeeper.setChangeQueue(changes);
-//            changeQueue.add(changeKeeper);
-
-        }
-
+         }
         ontology.getOWLOntologyManager().saveOntology(ontology);
         return consistent;
     }

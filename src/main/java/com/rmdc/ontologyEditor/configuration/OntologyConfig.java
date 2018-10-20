@@ -2,6 +2,7 @@ package com.rmdc.ontologyEditor.configuration;
 
 import com.clarkparsia.pellet.owlapiv3.PelletReasonerFactory;
 import com.rmdc.ontologyEditor.model.DataTransfer;
+import com.rmdc.ontologyEditor.model.OPKeeper;
 import com.rmdc.ontologyEditor.model.TempChangesKeeper;
 import com.rmdc.ontologyEditor.repository.OntoVersionRepository;
 import org.semanticweb.owlapi.apibinding.OWLManager;
@@ -69,6 +70,9 @@ public class OntologyConfig {
     public DataTransfer dataTransfer(){
         return new DataTransfer();
     }
+
+    @Bean
+    public OPKeeper opKeeper(){ return new OPKeeper(); }
 
     @Bean
     public ShortFormEntityChecker entityChecker(){

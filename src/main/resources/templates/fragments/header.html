@@ -11,13 +11,13 @@
                         <a th:href="@{/}">Home</a>
                     </li>
                     <li th:classappend="${module == 'view' ? 'active' : ''}">
-                        <a th:href="@{/classDetail/} + ${session.currentClass}">Classes</a>
+                        <a th:href="@{/Classes/} + ${session.currentClass}">Classes</a>
                     </li>
                     <li th:classappend="${module == 'oPView' ? 'active' : ''}">
-                        <a th:href="@{/objectPropertyDetail/} + ${session.currentOP}">Object Properties</a>
+                        <a th:href="@{/ObjectProperties/} + ${session.currentOP}">Object Properties</a>
                     </li>
                     <li th:classappend="${module == 'dPView' ? 'active' : ''}">
-                        <a th:href="@{/dataPropertyDetail/} + ${session.currentDP}">Data Properties</a>
+                        <a th:href="@{/DataProperties/} + ${session.currentDP}">Data Properties</a>
                     </li>
                     <li th:classappend="${module == 'versionInfo' ? 'active' : ''}">
                         <a th:href="@{/version}">Version Management</a>

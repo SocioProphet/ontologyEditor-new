@@ -5,9 +5,9 @@
     <title>Object Properties</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <link rel="stylesheet" href="/webjars/bootstrap/3.3.7/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="../css/main.css"/>
     <link href="http://code.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css" rel="Stylesheet"/>
     <link rel="stylesheet" href="../css/jqtree.css"/>
+    <link rel="stylesheet" href="../css/main.css"/>
 </head>
 <body>
 <div th:replace="fragments/header :: header"/>
@@ -16,13 +16,14 @@
         <div class="col-sm-3 tree well well-sm">
             <h4>Object Property Hierarchy
                 <a href="#"  data-toggle="modal" data-target="#addOProperty" id="addBtn"><span class="glyphicon glyphicon-plus fa-md "/></a>
-                <form th:if="${undo}" action="/undo"  method="get" name="addForm">
-                    <button type="submit" class="btn btn-link"> <span class="glyphicon glyphicon-repeat"/></button>
-                </form>
+                <!--<form th:if="${undo}" action="/undo"  method="get" name="addForm">-->
+                    <!--<button type="submit" class="btn btn-link"> <span class="glyphicon glyphicon-repeat"/></button>-->
+                <!--</form>-->
             </h4>
-            <div id="tree"></div>
+            <div id="otree"></div>
         </div>
-        <div class="col-sm-9 tree well well-sm" th:if="${session.currentOP} != 'topObjectProperty'">
+        <div id="editFrag" class="col-sm-9 tree well well-sm" >
+            <div th:if="${session.currentOP} != 'topObjectProperty'">
             <div class="panel panel-success">
                 <div class="panel-heading">Property
                     <a href="#" onclick="changeAction('/removeOProperty');" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
@@ -34,45 +35,45 @@
             <div class="panel panel-success" name="cats">
                 <div class="panel-heading" >Characteristics </div>
                 <div class="list-group">
-                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="F"/>Functional</label>
-                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
-                            <input type="hidden" value="F" name="currentClass"/>
+                    <div class="list-group-item">
+                        <form th:action="@{/editCharacteristics/functional}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="checkbox"  th:checked="${model.functional}" name="functional" id="f"/><label for="f">Functional</label>
                             <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
                         </form>
                     </div>
-                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="IF"/>Inverse Functional</label>
-                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
-                            <input type="hidden" value="IF" name="currentClass"/>
+                    <div class="list-group-item">
+                        <form th:action="@{/editCharacteristics/inverseFunctional}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="checkbox"   th:checked="${model.inverseFunctional}" name="inverseFunctional" id="if"/><label for="if">Inverse Functional</label>
                             <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
                         </form>
                     </div>
-                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="T"/>Transitive</label>
-                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
-                            <input type="hidden" value="T" name="currentClass"/>
+                    <div class="list-group-item">
+                        <form th:action="@{/editCharacteristics/transitive}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="checkbox"  name="transitive" th:checked="${model.transitive}" id="t"/><label for="t">Transitive</label>
                             <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
                         </form>
                     </div>
-                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="S"/>Symmetric</label>
-                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
-                            <input type="hidden" value="S" name="currentClass"/>
+                    <div class="list-group-item">
+                        <form th:action="@{/editCharacteristics/symmetric}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="checkbox"  name="symmetric" th:checked="${model.symmetric}" id="s"/><label for="s">Symmetric</label>
                             <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
                         </form>
                     </div>
-                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="AS"/>Asymmetric</label>
-                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
-                            <input type="hidden" value="AS" name="currentClass"/>
+                    <div class="list-group-item">
+                        <form th:action="@{/editCharacteristics/asymmetric}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="checkbox"  name="asymmetric" th:checked="${model.asymmetric}" id="asy"/><label for="asy">Asymmetric</label>
                             <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
                         </form>
                     </div>
-                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="R"/>Reflexive</label>
-                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
-                            <input type="hidden" value="R" name="currentClass"/>
+                    <div class="list-group-item">
+                        <form th:action="@{/editCharacteristics/reflexive}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="checkbox"  name="reflexive" th:checked="${model.reflexive}" id="r"/><label for="r">Reflexive</label>
                             <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
                         </form>
                     </div>
-                    <div class="list-group-item"><label><input type="checkbox" disabled="disabled" value="IR"/>Irreflexive</label>
-                        <form th:action="@{/editCharacteristics}" method="post" name="addForm" th:object="${transfer}">
-                            <input type="hidden" value="IR" name="currentClass"/>
+                    <div class="list-group-item">
+                        <form th:action="@{/editCharacteristics/irreflexive}" method="post" name="addForm" th:object="${transfer}">
+                            <input type="checkbox"  name="irreflexive" th:checked="${model.irreflexive}" id="ir"/><label for="ir">Irreflexive</label>
                             <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
                         </form>
                     </div>
@@ -81,23 +82,27 @@
 
             <div class="panel panel-success">
                 <div class="panel-heading">Inverse Property
-                    <a  th:if="${oPInverse} == null" href="#" data-toggle="modal" data-target="#addIOProperty" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
-
-                    <a href="#" th:if="${oPInverse} != null" onclick="changeAction('/removeIOProperty');" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                    <a href="#" data-toggle="modal" data-target="#addIOProperty" >
+                        <span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
                 </div>
                 <div class="panel-body">
-                    <p th:text="${oPInverse}"></p>
-
+                    <ul class="list-group" >
+                        <li class="list-group-item" th:each="item : ${model.inverseProps}">
+                            <span th:text="${item}">Grrr!!!</span>
+                            <a href="#" th:onclick="'javascript:changeAction(\'/removeIOProperty/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm">
+                                <span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                        </li>
+                    </ul>
                 </div>
             </div>
 
             <div class="panel panel-success">
                 <div class="panel-heading">Disjoint Properties
-                    <a onclick="loadNonDisjoint()" href="#" data-toggle="modal" data-target="#addDisOProperty" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
+                    <a href="#" data-toggle="modal" data-target="#addDisOProperty" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
                 </div>
                 <div class="panel-body">
                     <ul class="list-group" >
-                        <li class="list-group-item" th:each="item : ${disjointOP}">
+                        <li class="list-group-item" th:each="item : ${model.disjointProps}">
                             <span th:text="${item}">Grrr!!!</span>
                             <a href="#" th:onclick="'javascript:changeAction(\'/removeDisOProperty/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
 
@@ -112,7 +117,7 @@
                 </div>
                 <div class="panel-body">
                     <ul class="list-group" >
-                        <li class="list-group-item" th:each="item : ${domainOP}">
+                        <li class="list-group-item" th:each="item : ${model.domains}">
                             <span th:text="${item}">Grrr!!!</span>
                             <a href="#" th:onclick="'javascript:changeAction(\'/removeOPropertyDomain/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
                         </li>
@@ -125,13 +130,14 @@
                 </div>
                 <div class="panel-body">
                     <ul class="list-group" >
-                        <li class="list-group-item" th:each="item : ${rangeOP}">
+                        <li class="list-group-item" th:each="item : ${model.ranges}">
                             <span th:text="${item}">Grrr!!!</span>
                             <a href="#" th:onclick="'javascript:changeAction(\'/removeOPropertyRange/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
 
                         </li>
                     </ul>
                 </div>
+            </div>
             </div>
         </div>
     </div>
@@ -143,8 +149,7 @@
         <!-- Modal content-->
         <div class="modal-content">
             <div class="modal-header" style="padding:35px 50px;">
-                <button type="button" data-dismiss="modal" class="close">&times;</button>
-                <h4><span class="glyphicon glyphicon-lock"></span> Add New Object Property</h4>
+                <h4> Add New Object Property</h4>
             </div>
             <div class="modal-body" style="padding:40px 50px;">
 
@@ -153,7 +158,7 @@
                     <input type="hidden" name = "cardinality" value="0"/>
                     <div class="form-group">
                         <label>Name</label>
-                        <input type="text" th:field="*{currentClass}" class="form-control" required="required"/>
+                        <input type="text" th:field="*{cConcept}" class="form-control" required="required"/>
                     </div>
                     <div class="form-group">
                         <label>Parent</label>
@@ -163,25 +168,25 @@
                     </div>
                     <div class="form-group">
                         <div class="checkbox">
-                            <label><input type="checkbox" th:field="*{classList}" value="F"/>Functional</label>
+                            <input type="checkbox" name="functional" value="F" id="ff"/><label for="ff">Functional</label>
                         </div>
                         <div class="checkbox">
-                            <label><input type="checkbox" th:field="*{classList}" value="IF"/>Inverse Functional</label>
+                            <input type="checkbox" name="inverseFunctional" value="IF" id="fif"/><label for="fif">Inverse Functional</label>
                         </div>
                         <div class="checkbox">
-                            <label><input type="checkbox" th:field="*{classList}" value="T"/>Transitive</label>
+                           <input type="checkbox" name="transitive" value="T" id="ft"/> <label for="ft">Transitive</label>
                         </div>
                         <div class="checkbox">
-                            <label><input type="checkbox" th:field="*{classList}" value="S"/>Symmetric</label>
+                            <input type="checkbox" name="symmetric" value="S" id="fs"/><label for="fs">Symmetric</label>
                         </div>
                         <div class="checkbox">
-                            <label><input type="checkbox" th:field="*{classList}" value="AS"/>Asymmetric</label>
+                            <input type="checkbox" name="asymmetric" value="AS" id="fas"/><label for="fas">Asymmetric</label>
                         </div>
                         <div class="checkbox">
-                            <label><input type="checkbox" th:field="*{classList}" value="R"/>Reflexive</label>
+                            <input type="checkbox" name="reflexive" value="R" id="fr"/><label for="fr">Reflexive</label>
                         </div>
                         <div class="checkbox">
-                            <label><input type="checkbox" th:field="*{classList}" value="IR"/>Irreflexive</label>
+                           <input type="checkbox" name="irreflexive" value="IR" id="fir"/> <label for="fir">Irreflexive</label>
                         </div>
                     </div>
                     <div class="form-group">
@@ -210,10 +215,6 @@
                 <!--/*@thymesVar id="transfer" type="hello.bean.transfer"*/-->
                 <form action="#" th:action="@{/addIOProperty}" th:object="${transfer}" method="post" name="addForm">
                     <input type="hidden" value="0"/>
-                    <div class="form-group">
-                        <label>Property</label>
-                        <input type="text" th:value="${session.currentOP}" name="currentClass" class="form-control" disabled="disabled"/>
-                    </div>
                     <div class="form-group">
                         <label>Inverse Property</label>
                         <select class="form-control" id="op2" name="oProperties">
@@ -247,12 +248,10 @@
                 <form action="#" th:action="@{/addDisOProperty}" th:object="${transfer}" method="post" name="addForm">
                     <input type="hidden" value="0"/>
                     <div class="form-group">
-                        <label>Property</label>
-                        <input type="text" th:value="${session.currentOP}" name="currentClass" class="form-control" disabled="disabled"/>
-                    </div>
-                    <div class="form-group">
                         <label>Disjoint Properties</label>
-                        <select class="form-control" id="op3" name="oProperties" multiple="multiple">
+                        <select th:if="${session.currentOP} != 'topObjectProperty'" class="form-control" id="op3" name="oProperties" multiple="multiple">
+                            <option th:each="item:${model.nonDisjointProps}" th:value="${item}" th:text="${item}">
+                            </option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -281,10 +280,6 @@
                 <!--/*@thymesVar id="transfer" type="hello.bean.transfer"*/-->
                 <form action="#" th:action="@{/addOPropertyDomain}" th:object="${transfer}" method="post" name="addForm">
                     <input type="hidden" value="0"/>
-                    <div class="form-group">
-                        <label>Property</label>
-                        <input type="text" th:value="${session.currentOP}" name="currentClass" class="form-control" disabled="disabled"/>
-                    </div>
                     <div class="form-group">
                         <label>Domain</label>
                         <select class="form-control" id="cl1" name="classList" >
@@ -317,7 +312,7 @@
                     <input type="hidden" value="0"/>
                     <div class="form-group">
                         <label>Property</label>
-                        <input type="text" th:value="${session.currentOP}" name="currentClass" class="form-control" disabled="disabled"/>
+                        <input type="text" th:value="${session.currentOP}" name="cConcept" class="form-control" />
                     </div>
                     <div class="form-group">
                         <label>Range</label>
@@ -346,7 +341,7 @@
                 <input type="hidden" value="0"/>
                 <div class="form-group">
                     <label>State the Reason For Deletion</label>
-                    <textarea class="form-control" rows="5" th:field="*{description}" required="required"></textarea>
+                    <textarea class="form-control" rows="5" th:field="*{description}" required="required" title=" "></textarea>
                 </div>
                 <div class="form-group">
                     <button type="submit" class="btn btn-danger btn-block"> Remove </button>
@@ -370,11 +365,15 @@
     /*]]>*/
 
     $(document).ready(function () {
-        $('#tree')
+        var instance;
+        var branchCont;
+        $('#otree')
             .on('changed.jstree', function (e, data) {
                 var objNode = data.instance.get_node(data.selected);
-                var url = '/objectPropertyDetail/' + objNode.text;
-                location.href = url;
+                var url = '/ObjectProperties/' + objNode.text;
+                history.pushState({}, null, url);
+                url = '/ObjectPropertiesAJAX/'+objNode.text;
+                $("#editFrag").load(url);
             })
             .jstree({
                 core: {
@@ -388,9 +387,9 @@
                 plugins: ["types"]
 
             });
-        $("#tree").on('ready.jstree', function () {
-            var instance = $("#tree").jstree(true);
-            var branchCont = instance._model.data;
+        $("#otree").on('ready.jstree', function () {
+            instance = $("#otree").jstree(true);
+            branchCont = instance._model.data;
             for (var branchKey in branchCont) {
                 var branch = branchCont[branchKey];
                 if (branch.text === node) {
@@ -398,55 +397,41 @@
                     break;
                 }
             }
-            $("#tree").jstree('open_all');
+            $("#otree").jstree('open_all');
         });
 
         $("[name='addForm']").on('submit', function(e){
             e.preventDefault();
-            var self = this;
             var form = $(this);
             if (form.data('requestRunning')) {
                 return;
             }
-
             form.data('requestRunning', true);
-
             $.ajax({
                 url: form.attr("action"),
                 type: form.attr("method"),
                 data: form.serialize(),
                 success: function(result){
-                    if(result|| (result.indexOf("Deleted")>-1)){
+                    if(result){
                         $.notify("Modification Success", "success");
                     }else{
                         $.notify("Modification Failed", "error" );
                     }
 
-
                     setTimeout(
                         function()
                         {
-                            if(result.indexOf("Deleted")>-1){
-                                window.location='/objectPropertyDetail/topObjectProperty';
-                            }else{
-                                location.reload(true);
+                            if(result.indexOf("/ObjectProperties/")>-1) {
+                                window.location.replace(result);
                             }
                         }, 2000);
-
-
                 },
                 complete: function (e) {
                     form.data('requestRunning', false);
                 }
-
             });
         });
-
-        getChars();
-        loadDisjoint();
         loadPropertyData();
-
-
     });
 
     function getClassList(){
@@ -477,80 +462,6 @@
         });
 
     }
-
-    function getHierearchy(){
-        $.ajax({
-            url:'/getOPHierarchy',
-            type:'get',
-            dataType:'json',
-            success:function(json){
-                data=json;
-            }
-        })
-    }
-
-    function getChars(){
-
-        $.ajax({
-            url:' /getOPChars/'+node,
-            type:'get',
-            dataType:'json',
-            success:function(json){
-                console.log(json)
-                $.each( json, function( key, value ) {
-                    if(value=='F'){
-                        $("[name='cats']").find("input[value='F']").prop('checked', true);
-                    }
-                    if(value=='IF'){
-                        $("[name='cats']").find("input[value='IF']").prop('checked', true);
-                    }
-                    if(value=='T'){
-                        $("[name='cats']").find("input[value='T']").prop('checked', true);
-                    }
-                    if(value=='S'){
-                        $("[name='cats']").find("input[value='S']").prop('checked', true);
-                    }
-                    if(value=='AS'){
-                        $("[name='cats']").find("input[value='AS']").prop('checked', true);
-                    }
-                    if(value=='R'){
-                        $("[name='cats']").find("input[value='R']").prop('checked', true);
-                    }
-                    if(value=='IR'){
-                        $("[name='cats']").find("input[value='IR']").prop('checked', true);
-                    }
-                });
-            }
-        })
-    }
-
-    function loadNonDisjoint(){
-        $('#op3').empty();
-        $.ajax({
-            url: '/getNonDisOProperties',
-            type: 'get',
-            dataType: 'json',
-            success: function (json) {
-                $.each(json, function (i, value) {
-                    $('#op3').append($('<option>').text(value).attr('value', value)).append("</option>");
-                });
-            }
-        });
-    }
-    function loadDisjoint(){
-        $.ajax({
-            url: '/getDisOProperties',
-            type: 'get',
-            dataType: 'json',
-            success: function (json) {
-                $.each(json, function (i, value) {
-                    $('#disOP').append($('<li class="list-group-item">').text(value).attr('value', value))
-                        .append("</li>");
-                });
-            }
-        });
-    }
-
     function changeAction(url){
         $("#deleteForm").find("form").attr("action",url);
     }

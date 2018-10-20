@@ -1,0 +1,170 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+
+    <title>Change Management</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+    <link href="http://code.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css" rel="Stylesheet"/>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.12/css/jquery.dataTables.min.css"/>
+    <link rel="stylesheet" href="/css/main.css"/>
+
+</head>
+<body>
+<div th:replace="fragments/header :: header"/>
+
+<div class="container">
+    <div id="MainChange" class="panel panel-primary">
+        <div class="panel-heading">Change History</div>
+        <div class="panel-body">
+            <table id="data" class="stripe row-border order-column" cellspacing="0" width="100%">
+                <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Concept</th>
+                    <th>Change On</th>
+                    <th>Change</th>
+                    <th>Description</th>
+                    <th>Author</th>
+                    <th>Version</th>
+                    <th>Time</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+    <div id="DescribeChange" class="panel panel-primary">
+        <div class="panel-heading">Detailed Change History</div>
+        <div class="panel-body">
+            <table id="DetailData" class="stripe row-border order-column" cellspacing="0" width="100%">
+                <thead>
+                <tr>
+                    <th>Modified Axioms</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+    <div id="InstanceChange" class="panel panel-primary">
+        <div class="panel-heading">Instance Change History</div>
+        <div class="panel-body">
+            <table id="InstanceData" class="stripe row-border order-column" cellspacing="0" width="100%">
+                <thead>
+                <tr>
+                    <th>Affected Instances</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+
+    <div id="AnneChange" class="panel panel-primary">
+        <div class="panel-heading">Annotations Change History</div>
+        <div class="panel-body">
+            <table id="AnnData" class="stripe row-border order-column" cellspacing="0" width="100%">
+                <thead>
+                <tr>
+                    <th>Key</th>
+                    <th>Description</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="../webjars/jquery/2.2.4/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="http://code.jquery.com/ui/1.10.2/jquery-ui.js" ></script>
+<script src="https://cdn.datatables.net/1.10.12/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.16/js/dataTables.bootstrap.min.js"></script>
+
+<script>
+    $(document).ready( function () {
+        var table = $('#data').DataTable({
+            "scrollX": true,
+            "sAjaxSource": "/mainChanges",
+            "sAjaxDataProp": "",
+            fixedColumns:   true,
+            "order": [
+                [ 0, "asc" ]
+            ],
+            "aoColumns": [
+                { "mData": "id" },
+                { "mData": "concept" },
+                { "mData": "changeOn" },
+                { "mData": "changeType" },
+                { "mData": "description" },
+                { "mData": "author" },
+                { "mData": "version" },
+                { "mData": "time" }
+            ],
+            columnDefs: [
+                { targets: 0, visible:false },
+                { width: 100, targets: 1 },
+                { width: 200, targets: 2 },
+                { width: 50, targets: 3 },
+                { width: 200, targets: 4 },
+                { width: 50, targets: 5 },
+                { width: 50, targets: 6 },
+                { width: 150, targets: 7 },
+            ]
+        });
+        var Dtable = $('#DetailData').DataTable({
+            "sAjaxDataProp": "",
+            "sAjaxSource": "",
+            "order": [
+                [ 0, "asc" ]
+            ],
+            "aoColumns": [
+                { "mData": "description" }
+            ]
+        });
+        var Itable = $('#InstanceData').DataTable({
+            "sAjaxDataProp": "",
+            "sAjaxSource": "",
+            "order": [
+                [ 0, "asc" ]
+            ],
+            "aoColumns": [
+                { "mData": "description" }
+            ]
+        });
+        var Atable = $('#AnnData').DataTable({
+            "sAjaxDataProp": "",
+            "sAjaxSource": "",
+            "order": [
+                [ 0, "asc" ]
+            ],
+            "aoColumns": [
+                { "mData": "key" },
+                { "mData": "description" }
+            ]
+        });
+        $('#data tbody').on('click', 'tr', function () {
+            var data = table.row($(this)).data();
+            var Dtable = $('#DetailData').DataTable();
+            $.get('/DetailChanges/'+data.id, function(newDataArray) {
+                Dtable.clear();
+                Dtable.rows.add(newDataArray);
+                Dtable.draw();
+            });
+            var Itable = $('#InstanceData').DataTable();
+            $.get('/instanceChanges/'+data.id, function(newDataArray) {
+                Itable.clear();
+                Itable.rows.add(newDataArray);
+                Itable.draw();
+            });
+            var Atable = $('#AnnData').DataTable();
+            $.get('/annChanges/'+data.id, function(newDataArray) {
+                Atable.clear();
+                Atable.rows.add(newDataArray);
+                Atable.draw();
+            });
+        });
+    });
+</script>
+
+</body>
+
+</html>

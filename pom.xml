@@ -9,7 +9,7 @@
 	<packaging>jar</packaging>
 
 	<name>ontologyEditor</name>
-	<description>Demo project for Spring Boot</description>
+	<description>for collaborative ontology development</description>
 
 	<parent>
 		<groupId>org.springframework.boot</groupId>
@@ -60,7 +60,7 @@
 		<dependency>
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>
-			<version>6.0.6</version>
+			<version>8.0.11</version>
 		</dependency>
 
 		<dependency>
@@ -86,14 +86,41 @@
 			<artifactId>pellet-owlapi-ignazio1977</artifactId>
 			<version>2.4.0-ignazio1977</version>
 		</dependency>
-	</dependencies>
+
+		<dependency>
+			<groupId>javax.xml.bind</groupId>
+			<artifactId>jaxb-api</artifactId>
+			<version>2.2.11</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.sun.xml.bind</groupId>
+			<artifactId>jaxb-core</artifactId>
+			<version>2.2.11</version>
+		</dependency>
+
+    </dependencies>
 
 	<build>
 		<plugins>
+
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
+			</plugin>          
+			
+			<plugin>
+      <artifactId>maven-surefire-plugin</artifactId>
+      <version>2.21.0</version>
+      <dependencies>
+        <dependency>
+          <groupId>org.ow2.asm</groupId>
+          <artifactId>asm</artifactId>
+          <version>6.2</version> 
+        </dependency>
+      </dependencies>
+    </plugin>
+			
 		</plugins>
 	</build>
 

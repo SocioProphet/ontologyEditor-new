@@ -13,9 +13,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 
-
 /**
  * Created by Lotus on 8/16/2017.
+ * includes functionality related to OWL classes
  */
 @Service
 public class ClassService {
@@ -24,54 +24,88 @@ public class ClassService {
     private final OWLReasoner structuralReasoner;
     private final OWLOntology ontology;
     private final AxiomHandler axiomHandler;
-    private final Map<String,ClassKeeper> classKeeper;
+    private final ExpressionCreator  expCreator;
+    private Map<String,ClassKeeper> classKeeper;
     private final OWLReasoner pelletReasoner;
+    private final ConceptReaderService readerService;
     private List<String> classList;
     private List<String> individualList;
-    private List<String> dataTypeList;
+   // private List<String> dataTypeList;
 
     private String treeString=null;
-
     @Autowired
-    public ClassService(OWLReasoner structuralReasoner, OWLOntology ontology, AxiomHandler axiomHandler, Map<String, ClassKeeper> classKeeper, OWLReasoner pelletReasoner) {
+    public ClassService(OWLReasoner structuralReasoner, OWLOntology ontology,
+                        AxiomHandler axiomHandler, ExpressionCreator expCreator, ConceptReaderService readerService,
+                        OWLReasoner pelletReasoner) {
         this.structuralReasoner = structuralReasoner;
         this.ontology = ontology;
         this.axiomHandler = axiomHandler;
-        this.classKeeper = classKeeper;
+        this.expCreator = expCreator;
         this.pelletReasoner = pelletReasoner;
-        try {
-            printHierarchy(ontology.getOWLOntologyManager().getOWLDataFactory().getOWLThing());
-        } catch (OWLException e) {
-            e.printStackTrace();
+        this.readerService = readerService;
+
+        this.classKeeper = readerService.getClassKeeper();
+        printHierarchy(ontology.getOWLOntologyManager().getOWLDataFactory().getOWLThing());
+    }
+
+    private void printHierarchy(OWLClass clazz) {
+        if (structuralReasoner.isSatisfiable(clazz)) {
+            if(classTree == null){
+                classTree = new TreeNode(clazz.getIRI().getShortForm());
+            }
+
+            for (OWLClass child : structuralReasoner.getSubClasses(clazz, true).getFlattened()) {
+                if (structuralReasoner.isSatisfiable(child)) {
+                    UtilMethods.searchTree(
+                            clazz.getIRI().getShortForm(),classTree).addChild(child.getIRI().getShortForm());
+                    if (!child.equals(clazz)) {
+                        printHierarchy(child);
+                    }
+                }
+            }
         }
+    }
+
+    public String getClassTree(boolean build){
+        if(build){
+            classTree=null;
+            printHierarchy(ontology.getOWLOntologyManager().getOWLDataFactory().getOWLThing());
+        }
+        treeString = UtilMethods.buildTree((treeString==null|| build), classTree);
+        return treeString;
     }
 
     public ClassKeeper getClassKeeper(String owlClz){
         return classKeeper.get(owlClz);
     }
 
-    public boolean removeAnnotation(int index, String owlClass, String description) throws Exception {
-        Set<OWLAnnotation> annotations = (Set<OWLAnnotation>) EntitySearcher.getAnnotations(axiomHandler.getOWLEntity(owlClass,EntityType.CLASS).getIRI(), ontology);
-        OWLAnnotation toRemove = annotations.stream().filter(a->a.getValue().asLiteral().asSet().iterator().next().getLiteral().equals(classKeeper.get(owlClass).getAnnotations().get(index).getValue())).findFirst().get();
-        ontology.getOWLOntologyManager().applyChange(new RemoveAxiom(ontology,ontology.getOWLOntologyManager().getOWLDataFactory().getOWLAnnotationAssertionAxiom(axiomHandler.getOWLEntity(owlClass,EntityType.CLASS).getIRI(), toRemove)));
-        ontology.getOWLOntologyManager().saveOntology(ontology);
-        classKeeper.get(owlClass).getAnnotations().remove(index);
+    public boolean removeAnnotation(int index, String owlClass, String description){
+        Set<OWLAnnotation> annotations = (Set<OWLAnnotation>) EntitySearcher.getAnnotations(
+                axiomHandler.getOWLEntity(owlClass,EntityType.CLASS).getIRI(), ontology);
+        OWLAnnotation toRemove = annotations.stream().filter(
+                a->a.getValue().asLiteral().asSet().iterator().next().getLiteral().equals(
+                        classKeeper.get(owlClass).getAnnotations().get(index).getValue())).findFirst().get();
+        ontology.getOWLOntologyManager().applyChange(
+                new RemoveAxiom(ontology,ontology.getOWLOntologyManager().getOWLDataFactory()
+                        .getOWLAnnotationAssertionAxiom(
+                        axiomHandler.getOWLEntity(owlClass,EntityType.CLASS).getIRI(), toRemove)));
+        try {
+            ontology.getOWLOntologyManager().saveOntology(ontology);
+            if(axiomHandler.checkConsistency()){
+                refreshClassData();
 
-        TempChangesKeeper changesKeeper = new TempChangesKeeper(
-                null,
-                null,
-                new ArrayList<OWLAnnotation>(){{add(toRemove);}},
-                new Date(),
-                EChangeType.DELETE,
-                owlClass,
-                EConceptType.OWL_CLASS,
-                description
-        );
-        DBService.getChanges().add(changesKeeper);
-        return axiomHandler.checkConsistency();
+                DBService.updateDBQueue(
+                        null,null, new ArrayList<OWLAnnotation>(){{add(toRemove);}},
+                        EChangeType.DELETE, owlClass, EConceptType.OWL_CLASS,description);
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
-    public boolean addAnnotation(String key, String value, String owlClass, String description) throws Exception {
+    public boolean addAnnotation(String key, String value, String owlClass, String description){
         OWLAnnotationProperty property;
         switch (key) {
             case "comment":
@@ -108,54 +142,349 @@ public class ClassService {
 
         OWLAnnotation pA = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLAnnotation(property, label);
        // ontology.getOWLOntologyManager().applyChange(new AddOntologyAnnotation(ontology,pA));
-        ontology.getOWLOntologyManager().applyChange(new AddAxiom(ontology,ontology.getOWLOntologyManager().getOWLDataFactory().getOWLAnnotationAssertionAxiom(range.getIRI(), pA)));
+        ontology.getOWLOntologyManager().applyChange(
+                new AddAxiom(ontology,ontology.getOWLOntologyManager().getOWLDataFactory()
+                        .getOWLAnnotationAssertionAxiom(range.getIRI(), pA)));
 
-        ontology.getOWLOntologyManager().saveOntology(ontology);
-        classKeeper.get(owlClass).getAnnotations().add(new AnnotationKeeper(property.getIRI().getShortForm(), value));
-
-        TempChangesKeeper changesKeeper = new TempChangesKeeper(
-                null,
-                null,
-                new ArrayList<OWLAnnotation>(){{add(pA);}},
-                new Date(),
-                EChangeType.ADD,
-                owlClass,
-                EConceptType.OWL_CLASS,
-                description
-        );
-        DBService.getChanges().add(changesKeeper);
-        return axiomHandler.checkConsistency();
+        try {
+            ontology.getOWLOntologyManager().saveOntology(ontology);
+            if(axiomHandler.checkConsistency()){
+                refreshClassData();
+                DBService.updateDBQueue(
+                        null,null, new ArrayList<OWLAnnotation>(){{add(pA);}},
+                        EChangeType.ADD, owlClass,EConceptType.OWL_CLASS,description);
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
-    private void printHierarchy(OWLClass clazz) throws OWLException {
-        if (structuralReasoner.isSatisfiable(clazz)) {
-            if(classTree == null){
-                classTree = new TreeNode(clazz.getIRI().getShortForm());
-            }
+    public boolean addClass(String className, String description){
+        if(!ontology.containsEntityInSignature(axiomHandler.getIRI(className))){
+            OWLEntity entity = axiomHandler.getOWLEntity(className,EntityType.CLASS);
+            OWLAxiom declare = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLDeclarationAxiom(entity);
 
-            for (OWLClass child : structuralReasoner.getSubClasses(clazz, true).getFlattened()) {
-                if (structuralReasoner.isSatisfiable(child)) {
-                    UtilMethods.searchTree(clazz.getIRI().getShortForm(),classTree).addChild(child.getIRI().getShortForm());
-                    if (!child.equals(clazz)) {
-                        printHierarchy(child);
-                    }
+            try {
+                if( axiomHandler.addAxiom(declare)){
+                    refreshClassData();
+                    DBService.updateDBQueue(
+                        new ArrayList<OWLAxiom>(){{add(declare);}},null,null,
+                        EChangeType.DELETE,className, EConceptType.OWL_CLASS, description);
+                    return true;
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
+
+        return false;
+    }
+
+    public boolean removeClass(String owlClass, String description){
+
+        Set<OWLAxiom> toRemove = new HashSet<>();
+        for (OWLAxiom select : ontology.getAxioms())
+        {
+            if(select.getSignature().contains(axiomHandler.getOWLEntity(owlClass,EntityType.CLASS)))
+            {
+                toRemove.add(select);
             }
         }
+
+        ontology.getOWLOntologyManager().removeAxioms(ontology, toRemove);
+        try {
+            ontology.getOWLOntologyManager().saveOntology(ontology);
+            if(axiomHandler.checkConsistency()){
+                refreshClassData();
+                DBService.updateDBQueue(
+                    new ArrayList<OWLAxiom>(){{addAll(toRemove);}},
+                    new ArrayList<OWLNamedIndividual>(){{
+                        addAll(pelletReasoner.getInstances(
+                                (OWLClassExpression) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS),true)
+                                .getFlattened());}},
+                    new ArrayList<OWLAnnotation>(){{
+                        addAll(EntitySearcher.getAnnotations(
+                                axiomHandler.getOWLEntity(owlClass,EntityType.CLASS), ontology));}},
+                    EChangeType.DELETE,
+                    owlClass,
+                    EConceptType.OWL_CLASS,
+                    description
+                );
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    public boolean addClassAxiom(DataTransfer transfer, int cOrEq){
+
+        OWLAxiom axiom ;
+        OWLClassExpression childC = (OWLClass) axiomHandler.getOWLEntity(transfer.getcConcept(),EntityType.CLASS);
+        OWLClassExpression parent=getParent(childC);
+
+        switch (transfer.getPatternType()) {
+            case "o1":
+                OWLClassExpression parentC = (OWLClass) axiomHandler.getOWLEntity(transfer.getClassList()
+                        .get(0),EntityType.CLASS);
+
+                axiom = getOwlAxiom(cOrEq, childC, parent, parentC);
+                break;
+            case "o2": {
+                List<String> classList1 = transfer.getClassList();
+                OWLClassExpression[] owlClasses = new OWLClassExpression[classList1.size()+1];
+                for (int i = 0; i < classList1.size(); i++) {
+                    owlClasses[i] =(OWLClass) axiomHandler.getOWLEntity(classList1.get(i), EntityType.CLASS);
+                }
+
+                if (cOrEq == 1) {
+                    if (parent != null) {
+                        owlClasses[classList1.size()] = parent;
+                        axiom = expCreator.createEqAxiom(childC, expCreator.createClassIntersectionExp(parent, 
+                                expCreator.createClassUnionExp(owlClasses)));
+                    } else {
+                        axiom = expCreator.createEqAxiom(childC, expCreator.createClassUnionExp(owlClasses));
+                    }
+                }else{
+                    axiom = expCreator.createSubAxiom(childC, expCreator.createClassUnionExp(owlClasses));
+                }
+                break;
+            }
+            case "o3": {
+                List<String> classList1 = transfer.getClassList();
+                OWLClassExpression[] owlClasses = new OWLClassExpression[classList1.size()+1];
+                for (int i = 0; i < classList1.size(); i++) {
+                    owlClasses[i] =(OWLClass) axiomHandler.getOWLEntity(classList1.get(i), EntityType.CLASS);
+                }
+
+                if (cOrEq == 1) {
+                    if (parent != null) {
+                        owlClasses[classList1.size()] = parent;
+                        axiom = expCreator.createEqAxiom(childC, expCreator.createClassIntersectionExp(owlClasses));
+                    } else {
+                        axiom = expCreator.createEqAxiom(childC, expCreator.createClassIntersectionExp(owlClasses));
+                    }
+                }else{
+                    axiom = expCreator.createSubAxiom(childC, expCreator.createClassIntersectionExp(owlClasses));
+                }
+
+                break;
+            }
+            case "o4": {
+                OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(transfer.getoProperties()
+                        .get(0),EntityType.OBJECT_PROPERTY);
+                OWLClass owlClass = (OWLClass) axiomHandler.getOWLEntity(transfer.getClassList()
+                        .get(0),EntityType.OBJECT_PROPERTY);
+                OWLClassExpression someValuesFrom = expCreator.createObjecctSomeValueExp(property, owlClass);
+
+                axiom = getOwlAxiom(cOrEq, childC, parent, someValuesFrom);
+
+                break;
+            }
+            case "o5": {
+                OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(
+                        transfer.getoProperties().get(0),EntityType.OBJECT_PROPERTY);
+                List<String> classList1 = transfer.getClassList();
+                OWLClassExpression[] owlClasses = new OWLClassExpression[classList1.size()+1];
+                for (int i = 0; i < classList1.size(); i++) {
+                    owlClasses[i] =(OWLClass) axiomHandler.getOWLEntity(classList1.get(i), EntityType.CLASS);
+                }
+                OWLClassExpression allValuesFrom = expCreator.createObjectAllValueExp(property,
+                        expCreator.createClassUnionExp(owlClasses));
+
+                axiom = getOwlAxiom(cOrEq, childC, parent, allValuesFrom);
+                break;
+            }
+            case "o6": {
+
+                OWLDataProperty property = (OWLDataProperty) axiomHandler.getOWLEntity(transfer.getdProperties()
+                        .get(0),EntityType.DATA_PROPERTY);
+                OWLDatatype dataType = (OWLDatatype) axiomHandler.getOWLEntity(transfer.getdTypes()
+                        .get(0),EntityType.DATATYPE);
+                OWLLiteral literal = ontology.getOWLOntologyManager().getOWLDataFactory()
+                        .getOWLLiteral(transfer.getLiterals().get(0), dataType);
+                OWLClassExpression hasValue = expCreator.createDataHasValueExp(property, literal);
+
+
+                axiom = getOwlAxiom(cOrEq, childC, parent, hasValue);
+                break;
+            }
+            default: {
+                OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(
+                        transfer.getoProperties().get(0),EntityType.OBJECT_PROPERTY);
+                OWLClassExpression cardinality;
+                switch (transfer.getCardinalityType()) {
+                    case "min":
+                        cardinality = expCreator.createObjectMinCardinalityExp(transfer.getCardinality(), property);
+                        break;
+                    case "max":
+                        cardinality = expCreator.createObjectMaxCardinalityExp(transfer.getCardinality(), property);
+                        break;
+                    default:
+                        cardinality = expCreator.createObjectExactCardinalityExp(transfer.getCardinality(), property);
+                        break;
+                }
+
+                axiom = getOwlAxiom(cOrEq, childC, parent, cardinality);
+                break;
+            }
+        }
+
+        try {
+            if(axiomHandler.addAxiom(axiom)){
+                if(cOrEq==0){
+                    getClassTree(true);
+                }
+                refreshClassData();
+
+                DBService.updateDBQueue(
+                    new ArrayList<OWLAxiom>(){{add(axiom);}},null,null,EChangeType.ADD,
+                    transfer.getcConcept(),EConceptType.OWL_CLASS, transfer.getDescription());
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
     }
 
-    public String getClassTree(boolean build) throws JsonProcessingException, OWLException {
-        if(build){
-            printHierarchy(ontology.getOWLOntologyManager().getOWLDataFactory().getOWLThing());
+    private OWLAxiom getOwlAxiom(int cOrEq, OWLClassExpression childC, OWLClassExpression parent,
+                                 OWLClassExpression parentC) {
+        OWLAxiom axiom;
+        if (cOrEq == 1) {
+            if (parent != null) {
+                axiom = expCreator.createEqAxiom(childC,
+                        expCreator.createClassIntersectionExp(parent,parentC));
+            } else {
+                axiom = expCreator.createEqAxiom(childC, parentC);
+            }
+        }else{
+            axiom = expCreator.createSubAxiom(childC, parentC);
+
         }
-        if(treeString==null|| build){
-            ObjectMapper mapper = new ObjectMapper();
-            treeString = mapper.writeValueAsString(classTree);
-        }
-        return treeString;
+        return axiom;
     }
 
-    private List<OWLClass> getChildClasses(OWLClass clazz) throws OWLException {
+    public boolean addDisjointClass(String owlClass, String disjoint, String description){
+        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
+        OWLClass dis = (OWLClass) axiomHandler.getOWLEntity(disjoint,EntityType.CLASS);
+        OWLAxiom dja = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLDisjointClassesAxiom(current,dis);
+        try {
+            if(axiomHandler.addAxiom(dja)){
+                refreshClassData();
+                DBService.updateDBQueue(
+                        new ArrayList<OWLAxiom>(){{add(dja);}},
+                        null,null,
+                        EChangeType.ADD, owlClass, EConceptType.OWL_CLASS, description );
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean removeDisjointClass(String owlClass, String disjoint, String description){
+        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
+        OWLClass dis = (OWLClass) axiomHandler.getOWLEntity(disjoint,EntityType.CLASS);
+        OWLAxiom dja = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLDisjointClassesAxiom(current,dis);
+        return addAxiomEx(owlClass, description, dja);
+    }
+
+    public boolean addDomainOf(String owlClass, String prop, String description){
+        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
+        OWLAxiom axiom = getOwlAxiom(prop, current);
+        return addAxiomEx2(owlClass, description, axiom);
+    }
+
+    public boolean removeDomainOf(String owlClass, String prop, String description){
+        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
+        OWLAxiom axiom = getOwlAxiom(prop, current);
+        return addAxiomEx(owlClass, description, axiom);
+    }
+
+    private OWLAxiom getOwlAxiom(String prop, OWLClass current) {
+        OWLAxiom axiom;
+        if(ontology.containsObjectPropertyInSignature(axiomHandler.getIRI(prop))){
+            OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(prop, EntityType.OBJECT_PROPERTY);
+            axiom = ontology.getOWLOntologyManager().getOWLDataFactory()
+                    .getOWLObjectPropertyDomainAxiom(property,current);
+        }else{
+            OWLDataProperty property = (OWLDataProperty) axiomHandler.getOWLEntity(prop,EntityType.DATA_PROPERTY);
+            axiom = ontology.getOWLOntologyManager().getOWLDataFactory()
+                    .getOWLDataPropertyDomainAxiom(property,current);
+        }
+        return axiom;
+    }
+
+
+    public boolean addRangeOf(String owlClass, String prop, String description) {
+        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
+        OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(prop,EntityType.OBJECT_PROPERTY);
+        OWLAxiom axiom= ontology.getOWLOntologyManager().getOWLDataFactory()
+                .getOWLObjectPropertyRangeAxiom(property,current);
+        return addAxiomEx2(owlClass, description, axiom);
+    }
+
+    public boolean removeRangeOf(String owlClass, String prop, String description) {
+        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
+        OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(prop,EntityType.OBJECT_PROPERTY);
+        OWLAxiom axiom= ontology.getOWLOntologyManager().getOWLDataFactory()
+                .getOWLObjectPropertyRangeAxiom(property,current);
+        return addAxiomEx(owlClass, description, axiom);
+    }
+
+    public boolean renameIRI(String entity, String newName, String description){
+
+        IRI entityToRename = axiomHandler.getIRI(entity);
+        IRI newNameIRI= axiomHandler.getIRI(newName);
+        boolean pass = !ontology.containsEntityInSignature(newNameIRI)
+                && !newName.equals("Thing")
+                && !newName.equals("topObjectProperty")
+                && !newName.equals("topDataProperty")
+                && !newName.equals("");
+        if (pass) {
+            OWLEntityRenamer owlEntityRenamer = new OWLEntityRenamer(ontology.getOWLOntologyManager(),
+                    ontology.getOWLOntologyManager().getOntologies());
+
+            final List<OWLOntologyChange> changes = owlEntityRenamer.changeIRI(entityToRename, newNameIRI);
+            for (OWLOntologyChange ch : changes) {
+                System.out.println(ch.getChangeRecord());
+            }
+            ontology.getOWLOntologyManager().applyChanges(changes);
+            try {
+                for (OWLOntology on : ontology.getOWLOntologyManager().getOntologies()) {
+                    ontology.getOWLOntologyManager().saveOntology(on);
+                }
+                refreshClassData();
+                DBService.updateDBQueue(
+                    null,null,null, EChangeType.UPDATE, entity,
+                    EConceptType.OWL_CLASS,description);
+                return true;
+            } catch (OWLOntologyStorageException e) {
+                e.printStackTrace();
+            }
+        }
+        return false;
+    }
+
+    public boolean removeSubClassOfAxiom(String owlClass, int id, String description){
+        OWLAxiom axiom =classKeeper.get(owlClass).getSubClassRestrictions().get(id).getAxiomObj();
+        return addAxiomEx(owlClass, description, axiom);
+
+    }
+
+    public boolean removeEqClassOfAxiom(String owlClass, int id, String description){
+        OWLAxiom axiom =classKeeper.get(owlClass).getEqClassRestrictions().get(id).getAxiomObj();
+        return addAxiomEx(owlClass, description, axiom);
+    }
+
+    private List<OWLClass> getChildClasses(OWLClass clazz){
         List<OWLClass> classes = new ArrayList<>();
 
         if (structuralReasoner.isSatisfiable(clazz)) {
@@ -204,257 +533,22 @@ public class ClassService {
         return this.individualList;
     }
 
-    public List<String> getAllDataTypes(){
+//    public List<String> getAllDataTypes(){
+//
+//        if(dataTypeList==null){
+//            List<String> dTypes = new ArrayList<>();
+//            Set<OWLDatatype> properties = ontology.getDatatypesInSignature();
+//            for(OWLDatatype t:properties){
+//                dTypes.add(t.getIRI().getShortForm());
+//            }
+//            Collections.sort(dTypes);
+//            this.dataTypeList=dTypes;
+//        }
+//
+//        return this.dataTypeList;
+//    }
 
-        if(dataTypeList==null){
-            List<String> dTypes = new ArrayList<>();
-            Set<OWLDatatype> properties = ontology.getDatatypesInSignature();
-            for(OWLDatatype t:properties){
-                dTypes.add(t.getIRI().getShortForm());
-            }
-            Collections.sort(dTypes);
-            this.dataTypeList=dTypes;
-        }
-
-        return this.dataTypeList;
-    }
-
-
-    public boolean addClass(String className) throws Exception {
-        if(!ontology.getOWLOntologyManager().contains(axiomHandler.getIRI(className))){
-            OWLEntity entity = axiomHandler.getOWLEntity(className,EntityType.CLASS);
-            OWLAxiom declare = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLDeclarationAxiom(entity);
-            ClassKeeper keeper  =new ClassKeeper();
-            keeper.setClassName(className);
-            classKeeper.put(className,keeper);
-
-            //TempChangesKeeper changesKeeper  =new TempChangesKeeper();
-            return axiomHandler.addAxiom(declare);
-        }
-
-        return false;
-    }
-
-    
-
-    public boolean deleteClass(String owlClass,String description) throws Exception {
-
-        Set<OWLAxiom> toRemove = new HashSet<>();
-        for (OWLAxiom select : ontology.getAxioms())
-        {
-            if(select.getSignature().contains(axiomHandler.getOWLEntity(owlClass,EntityType.CLASS)))
-            {
-                toRemove.add(select);
-            }
-        }
-       
-        axiomHandler.addToAxiomQueue(toRemove);
-
-        ontology.getOWLOntologyManager().removeAxioms(ontology, toRemove);
-        ontology.getOWLOntologyManager().saveOntology(ontology);
-
-        boolean con = axiomHandler.checkConsistency();
-        if(con){
-            classKeeper.remove(owlClass);
-            getClassTree(true);
-            TempChangesKeeper changesKeeper = new TempChangesKeeper(
-                    new ArrayList<OWLAxiom>(){{addAll(toRemove);}},
-                    new ArrayList<OWLNamedIndividual>(){{
-                        addAll(pelletReasoner.getInstances((OWLClassExpression) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS),true).getFlattened());}},
-                    new ArrayList<OWLAnnotation>(){{
-                        addAll(EntitySearcher.getAnnotations(axiomHandler.getOWLEntity(owlClass,EntityType.CLASS), ontology));}},
-                    new Date(),
-                    EChangeType.DELETE,
-                    owlClass,
-                    EConceptType.OWL_CLASS,
-                    description
-            );
-            DBService.getChanges().add(changesKeeper);
-        }
-        return con;
-    }
-
-    public boolean addClassAxiom(DataTransfer transfer, int cOrEq) throws Exception {
-
-        OWLAxiom axiom ;
-        OWLClass childC = (OWLClass) axiomHandler.getOWLEntity(transfer.getcConcept(),EntityType.CLASS);
-        OWLClass parent=getParent(childC);
-
-        switch (transfer.getPatternType()) {
-            case "o1":
-                OWLClass parentC = (OWLClass) axiomHandler.getOWLEntity(transfer.getClassList().get(0),EntityType.CLASS);
-
-                if (cOrEq == 1) {
-                    if (parent != null) {
-                        OWLObjectIntersectionOf intersectionOf = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectIntersectionOf(parent, parentC);
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, intersectionOf);
-                    } else {
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, parentC);
-                    }
-                }else{
-                    axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLSubClassOfAxiom(childC, parentC);
-
-                }
-
-                break;
-            case "o2": {
-                Set<OWLClass> owlClasses = new HashSet<>();
-                for (String s : transfer.getClassList()) {
-                    owlClasses.add((OWLClass) axiomHandler.getOWLEntity(s,EntityType.CLASS));
-                }
-                OWLObjectUnionOf unionOf = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectUnionOf(owlClasses);
-
-                if (cOrEq == 1) {
-                    if (parent != null) {
-                        OWLObjectIntersectionOf intersectionOf = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectIntersectionOf(parent, unionOf);
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, intersectionOf);
-                    } else {
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, unionOf);
-                    }
-                }else{
-                    axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLSubClassOfAxiom(childC, unionOf);
-                }
-                break;
-            }
-            case "o3": {
-                Set<OWLClass> owlClasses = new HashSet<>();
-                for (String s : transfer.getClassList()) {
-
-                    owlClasses.add((OWLClass) axiomHandler.getOWLEntity(s,EntityType.CLASS));
-                }
-                OWLObjectIntersectionOf intersectionOf = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectIntersectionOf(owlClasses);
-
-
-                if (cOrEq == 1) {
-                    if (parent != null) {
-                        owlClasses.add(parent);
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, parent);
-                    } else {
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, intersectionOf);
-
-                    }
-                }else{
-                    axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLSubClassOfAxiom(childC, intersectionOf);
-                }
-                System.out.println(axiom);
-                break;
-            }
-            case "o4": {
-                OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(transfer.getoProperties().get(0),EntityType.OBJECT_PROPERTY);
-                OWLClass owlClass = (OWLClass) axiomHandler.getOWLEntity(transfer.getClassList().get(0),EntityType.OBJECT_PROPERTY);
-                OWLObjectSomeValuesFrom someValuesFrom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectSomeValuesFrom(property, owlClass);
-
-
-                if (cOrEq == 1) {
-                    if (parent != null) {
-                        OWLObjectIntersectionOf intersectionOf = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectIntersectionOf(parent, someValuesFrom);
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, intersectionOf);
-                    } else {
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, someValuesFrom);
-                    }
-                }else{
-                    axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLSubClassOfAxiom(childC, someValuesFrom);
-                }
-
-                break;
-            }
-            case "o5": {
-                OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(transfer.getoProperties().get(0),EntityType.OBJECT_PROPERTY);
-                Set<OWLClass> owlClasses = new HashSet<>();
-                for (String s : transfer.getClassList()) {
-                    owlClasses.add((OWLClass) axiomHandler.getOWLEntity(s,EntityType.CLASS));
-                }
-                OWLObjectUnionOf unionOf = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectUnionOf(owlClasses);
-
-                OWLObjectAllValuesFrom allValuesFrom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectAllValuesFrom(property, unionOf);
-
-
-                if (cOrEq == 1) {
-                    if (parent != null) {
-                        OWLObjectIntersectionOf intersectionOf = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectIntersectionOf(parent, allValuesFrom);
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, intersectionOf);
-                    } else {
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, allValuesFrom);
-                    }
-                }else{
-                    axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLSubClassOfAxiom(childC, allValuesFrom);
-                }
-                break;
-            }
-            case "o6": {
-
-                OWLDataProperty property = (OWLDataProperty) axiomHandler.getOWLEntity(transfer.getdProperties().get(0),EntityType.DATA_PROPERTY);
-                OWLDatatype dataType = (OWLDatatype) axiomHandler.getOWLEntity(transfer.getdTypes().get(0),EntityType.DATATYPE);
-                OWLLiteral literal = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLLiteral(transfer.getLiterals().get(0), dataType);
-                OWLDataHasValue hasValue = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLDataHasValue(property, literal);
-
-
-                if (cOrEq == 1) {
-                    if (parent != null) {
-                        OWLObjectIntersectionOf intersectionOf = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectIntersectionOf(parent, hasValue);
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, intersectionOf);
-                    } else {
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, hasValue);
-                    }
-                }else{
-                    axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLSubClassOfAxiom(childC, hasValue);
-                }
-                break;
-            }
-            default: {
-                OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(transfer.getoProperties().get(0),EntityType.OBJECT_PROPERTY);
-                OWLObjectCardinalityRestriction cardinality;
-                if (transfer.getCardinalityType().equals("min")) {
-                    cardinality = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectMinCardinality(transfer.getCardinality(), property);
-                } else if (transfer.getCardinalityType().equals("max")) {
-                    cardinality = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectMaxCardinality(transfer.getCardinality(), property);
-                } else {
-                    cardinality = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectExactCardinality(transfer.getCardinality(), property);
-                }
-
-
-                if (cOrEq == 1) {
-                    if (parent != null) {
-                        OWLObjectIntersectionOf intersectionOf = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectIntersectionOf(parent, cardinality);
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, intersectionOf);
-                    } else {
-                        axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLEquivalentClassesAxiom(childC, cardinality);
-                    }
-                }else{
-                    axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLSubClassOfAxiom(childC, cardinality);
-                }
-                break;
-            }
-        }
-
-        RestrictionKeeper keeper = new RestrictionKeeper(UtilMethods.convertAxiom(axiom),axiom);
-        boolean con= axiomHandler.addAxiom(axiom);
-
-        if(con){
-            if(cOrEq==0){
-                classKeeper.get(transfer.getcConcept()).getSubClassRestrictions().add(keeper);
-                getClassTree(true);
-            }else{
-                classKeeper.get(transfer.getcConcept()).getEqClassRestrictions().add(keeper);
-            }
-
-            TempChangesKeeper changesKeeper = new TempChangesKeeper(
-                    new ArrayList<OWLAxiom>(){{add(axiom);}},
-                    null,
-                    null,
-                    new Date(),
-                    EChangeType.ADD,
-                    transfer.getcConcept(),
-                    EConceptType.OWL_CLASS,
-                    transfer.getDescription()
-            );
-            DBService.getChanges().add(changesKeeper);
-        }
-
-        return con;
-    }
-
-    public OWLClass getParent(OWLClass clz) {
+    private OWLClass getParent(OWLClassExpression clz) {
         Set<OWLClass> classes = ontology.getClassesInSignature();
         OWLClass parent=null;
         for(OWLClass c:classes){
@@ -470,7 +564,7 @@ public class ClassService {
         return parent;
     }
 
-    public List<String> getRange(String p) throws OWLException, JsonProcessingException {
+    public List<String> getRange(String p){
         List<String> rangeOf = new ArrayList<>();
         Set<OWLObjectPropertyRangeAxiom> da = ontology.getObjectPropertyRangeAxioms((OWLObjectPropertyExpression) axiomHandler.getOWLEntity(p,EntityType.OBJECT_PROPERTY));
         for(OWLObjectPropertyRangeAxiom a:da){
@@ -487,164 +581,40 @@ public class ClassService {
         return rangeOf;
     }
 
-    public boolean addOrRemoveDisjointClass(String owlClass, String dClz, int addOrRemove, String description) throws Exception {
-        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
-        OWLClass dis = (OWLClass) axiomHandler.getOWLEntity(dClz,EntityType.CLASS);
-        OWLAxiom dja = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLDisjointClassesAxiom(current,dis);
-        boolean con;
-        EChangeType type;
-        if(addOrRemove==1){
-            con =  axiomHandler.addAxiom(dja);
-            type = EChangeType.ADD;
-        }else{
-            con =  axiomHandler.removeAxiom(dja);
-            type =EChangeType.DELETE;
-        }
-
-        if(con){
-            TempChangesKeeper changesKeeper = new TempChangesKeeper(
-                    new ArrayList<OWLAxiom>(){{add(dja);}},
-                    null,
-                    null,
-                    new Date(),
-                    type,
-                    owlClass,
-                    EConceptType.OWL_CLASS,
-                    description
-            );
-            DBService.getChanges().add(changesKeeper);
-        }
-        return con;
+    private void refreshClassData(){
+        readerService.readComponentData();
+        this.classKeeper=readerService.getClassKeeper();
     }
-
-//1=add
-    public boolean addOrRemoveDomainOf(String owlClass, String prop, int addOrRemove, String description) throws Exception {
-
-        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
-
-        OWLAxiom axiom;
-        if(ontology.containsObjectPropertyInSignature(axiomHandler.getIRI(prop))){
-            OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(prop,EntityType.OBJECT_PROPERTY);
-            axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectPropertyDomainAxiom(property,current);
-        }else{
-            OWLDataProperty property = (OWLDataProperty) axiomHandler.getOWLEntity(prop,EntityType.DATA_PROPERTY);
-            axiom = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLDataPropertyDomainAxiom(property,current);
-        }
-        boolean con;
-        EChangeType type;
-        if(addOrRemove==1){
-            con =  axiomHandler.addAxiom(axiom);
-            type=EChangeType.ADD;
-        }else{
-            con =  axiomHandler.removeAxiom(axiom);
-            type = EChangeType.DELETE;
-        }
-
-        if(con){
-            TempChangesKeeper changesKeeper = new TempChangesKeeper(
-                    new ArrayList<OWLAxiom>(){{add(axiom);}},null,null, new Date(), type,
-                    owlClass, EConceptType.OWL_CLASS, description);
-            DBService.getChanges().add(changesKeeper);
-        }
-        return con;
-    }
-
-    public boolean addOrRemoveRangeOf(String owlClass, String prop, int addOrRemove, String description) throws Exception {
-
-        OWLClass current = (OWLClass) axiomHandler.getOWLEntity(owlClass,EntityType.CLASS);
-        OWLObjectProperty property = (OWLObjectProperty) axiomHandler.getOWLEntity(prop,EntityType.OBJECT_PROPERTY);
-        OWLAxiom axiom= ontology.getOWLOntologyManager().getOWLDataFactory().getOWLObjectPropertyRangeAxiom(property,current);
-
-        boolean con;
-        EChangeType type;
-        if(addOrRemove==0){
-            con = axiomHandler.removeAxiom(axiom);
-            type = EChangeType.DELETE;
-        }else{
-           con =  axiomHandler.addAxiom(axiom);
-           type = EChangeType.ADD;
-        }
-
-        if(con){
-            TempChangesKeeper changesKeeper = new TempChangesKeeper(
-                    new ArrayList<OWLAxiom>(){{add(axiom);}},null,null, new Date(), type,
-                    owlClass, EConceptType.OWL_CLASS, description);
-            DBService.getChanges().add(changesKeeper);
-        }
-        return con;
-    }
-
-    public boolean renameIRI(String entity, String newName, String description) throws OWLException {
-
-        IRI entityToRename = axiomHandler.getIRI(entity);
-        IRI newNameIRI= axiomHandler.getIRI(newName);
-        if (!ontology.getOWLOntologyManager().contains(newNameIRI)) {
-            OWLEntityRenamer owlEntityRenamer = new OWLEntityRenamer(ontology.getOWLOntologyManager(), ontology.getOWLOntologyManager().getOntologies());
-
-            final List<OWLOntologyChange> changes = owlEntityRenamer.changeIRI(entityToRename, newNameIRI);
-            for (OWLOntologyChange ch : changes) {
-                System.out.println(ch.getChangeRecord());
+    private boolean addAxiomEx2(String owlClass, String description, OWLAxiom axiom) {
+        try {
+            if(axiomHandler.addAxiom(axiom)){
+                refreshClassData();
+                DBService.updateDBQueue(
+                        new ArrayList<OWLAxiom>(){{
+                            add(axiom);}},null,null, EChangeType.ADD,
+                        owlClass, EConceptType.OWL_CLASS, description);
             }
-            ontology.getOWLOntologyManager().applyChanges(changes);
-            for (OWLOntology on : ontology.getOWLOntologyManager().getOntologies()) {
-                ontology.getOWLOntologyManager().saveOntology(on);
-            }
-            ClassKeeper k = classKeeper.get(entity);
-            classKeeper.remove(entity);
-            k.setClassName(newName);
-            classKeeper.put(newName,k);
-
-            TempChangesKeeper changesKeeper = new TempChangesKeeper(
-                    null,null,null, new Date(), EChangeType.UPDATE, entity,
-                    EConceptType.OWL_CLASS,description);
-            DBService.getChanges().add(changesKeeper);
             return true;
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return false;
     }
 
-    public boolean removeSubClassOfAxiom(String owlClass, int id, String description) throws Exception {
-        OWLAxiom axiom =classKeeper.get(owlClass).getSubClassRestrictions().get(id).getAxiomObj();
-        axiomHandler.removeAxiom(axiom);
-        classKeeper.get(owlClass).getSubClassRestrictions().remove(id);
-        boolean con =  axiomHandler.checkConsistency();
+    private boolean addAxiomEx(String owlClass, String description, OWLAxiom axiom) {
+        try {
+            if(axiomHandler.removeAxiom(axiom)){
+                refreshClassData();
+                DBService.updateDBQueue(
+                        new ArrayList<OWLAxiom>(){{add(axiom);}},null,null, EChangeType.DELETE,
+                        owlClass, EConceptType.OWL_CLASS, description);
+                return true;
+            }
 
-        if(con){
-            TempChangesKeeper changesKeeper = new TempChangesKeeper(
-                    new ArrayList<OWLAxiom>(){{add(axiom);}},
-                    null,
-                    null,
-                    new Date(),
-                    EChangeType.DELETE,
-                    owlClass,
-                    EConceptType.OWL_CLASS,
-                    description
-            );
-            DBService.getChanges().add(changesKeeper);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        return con;
-    }
-
-    public boolean removeEqClassOfAxiom(String owlClass, int id, String description) throws Exception {
-        OWLAxiom axiom =classKeeper.get(owlClass).getEqClassRestrictions().get(id).getAxiomObj();
-        axiomHandler.removeAxiom(axiom);
-        classKeeper.get(owlClass).getEqClassRestrictions().remove(id);
-        boolean con =  axiomHandler.checkConsistency();
-
-        if(con){
-            TempChangesKeeper changesKeeper = new TempChangesKeeper(
-                    new ArrayList<OWLAxiom>(){{add(axiom);}},
-                    null,
-                    null,
-                    new Date(),
-                    EChangeType.DELETE,
-                    owlClass,
-                    EConceptType.OWL_CLASS,
-                    description
-            );
-            DBService.getChanges().add(changesKeeper);
-        }
-        return con;
+        return false;
     }
 
 }

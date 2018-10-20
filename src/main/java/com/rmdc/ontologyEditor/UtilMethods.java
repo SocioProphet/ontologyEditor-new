@@ -1,6 +1,9 @@
 package com.rmdc.ontologyEditor;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rmdc.ontologyEditor.model.TreeNode;
+import com.rmdc.ontologyEditor.model.VersionTreeNode;
 import org.semanticweb.owlapi.dlsyntax.renderer.DLSyntaxObjectRenderer;
 import org.semanticweb.owlapi.io.OWLObjectRenderer;
 import org.semanticweb.owlapi.manchestersyntax.renderer.ManchesterOWLSyntaxOWLObjectRendererImpl;
@@ -24,6 +27,18 @@ public class UtilMethods {
         TreeNode res = null;
         for (int i = 0; res == null && i < children.size(); i++) {
             res = searchTree(className, (TreeNode) children.get(i));
+        }
+        return res;
+    }
+
+    public static VersionTreeNode searchTreeEx(String className, VersionTreeNode node) {
+        if (node.getText().equals(className)) {
+            return node;
+        }
+        List<?> children = node.getChildren();
+        VersionTreeNode res = null;
+        for (int i = 0; res == null && i < children.size(); i++) {
+            res = searchTreeEx(className, (VersionTreeNode) children.get(i));
         }
         return res;
     }
@@ -67,7 +82,7 @@ public class UtilMethods {
         return eng;
     }
 
-    public static byte[] toByts(Object o) {
+    public static byte[] toBits(Object o) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutput out = null;
         byte[] bytes = null;
@@ -111,4 +126,21 @@ public class UtilMethods {
         return o;
     }
 
+    public static String toManchesterFormat(OWLAxiom axiomToExplain) {
+        OWLObjectRenderer renderer = new ManchesterOWLSyntaxOWLObjectRendererImpl();
+        return renderer.render(axiomToExplain);
+    }
+
+    public static String buildTree(boolean condition, TreeNode node){
+        if(condition){
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                return mapper.writeValueAsString(node);
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+        return null;
+    }
 }

@@ -11,7 +11,7 @@ import java.util.List;
  * Created by Lotus on 8/17/2017.
  */
 public class TreeNode<T>{
-    private String text = null;
+    private String text;
     @JsonManagedReference
     private List<TreeNode> children = new ArrayList<>();
    // private String size="1500";
@@ -59,6 +59,5 @@ public class TreeNode<T>{
     public TreeNode getParent() {
         return parent;
     }
-
 
 }

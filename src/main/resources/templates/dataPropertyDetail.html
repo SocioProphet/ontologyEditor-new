@@ -20,73 +20,71 @@
                     <!--<button type="submit" class="btn btn-link"> <span class="glyphicon glyphicon-repeat"/></button>-->
                 <!--</form>-->
             </h4>
-            <div id="tree"></div>
+            <div id="dtree"></div>
         </div>
-        <div class="col-sm-9 tree well well-sm" th:if="${session.currentDP} != 'topDataProperty'">
-
-            <div class="panel panel-warning">
-                <div class="panel-heading">Property
-                    <a href="#" onclick="changeAction('/removeDProperty');" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+        <div id="editFrag" class="col-sm-9 tree well well-sm" >
+            <div th:if="${session.currentDP} != 'topDataProperty'">
+                <div class="panel panel-warning">
+                    <div class="panel-heading">Property
+                        <a href="#" onclick="changeAction('/removeDProperty');" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                    </div>
+                    <div class="panel-body">
+                        <p th:text="${session.currentDP}"></p></div>
                 </div>
-                <div class="panel-body">
-                    <p th:text="${session.currentDP}"></p></div>
-            </div>
+                <div class="panel panel-warning" name="cats">
+                    <div class="panel-heading" >Characteristics </div>
+                    <div class="list-group">
+                        <div class="list-group-item">
 
-            <div class="panel panel-warning" name="cats">
-                <div class="panel-heading" >Characteristics </div>
-                <div class="list-group">
-                    <div class="list-group-item">
-                        <label><input type="checkbox" disabled="disabled" value="F" th:checked="${isFunctional} ? 'checked'"/>Functional</label>
-                        <form th:action="@{/editDCharacteristics}" method="post" name="addForm">
-                            <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
-                        </form>
+                            <form th:action="@{/editDCharacteristics}" method="post" th:object="${transfer}" name="addForm">
+                                <input type="checkbox" name="functional" value="F" th:checked="${model.functional}" id="f"/><label for="f">Functional</label>
+                                <button style="display: inline" type="submit" class="btn btn-primary pull-right" >Change</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel panel-warning">
+                    <div class="panel-heading">Disjoint Properties
+                        <a onclick="loadNonDisjoint()" href="#" data-toggle="modal" data-target="#addDisDProperty" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
+                    </div>
+                    <div class="panel-body">
+                        <ul class="list-group" >
+                            <li class="list-group-item" th:each="item : ${model.disjointProps}">
+                                <span th:text="${item}">Grrr!!!</span>
+                                <a href="#" th:onclick="'javascript:changeAction(\'/removeDisDProperty/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="panel panel-warning">
+                    <div class="panel-heading">Property Domains
+                        <a onclick="getClassList()" href="#" data-toggle="modal" data-target="#addDPropertyDomain" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
+                    </div>
+                    <div class="panel-body">
+                        <ul class="list-group" >
+                            <li class="list-group-item" th:each="item : ${model.domains}">
+                                <span th:text="${item}">Grrr!!!</span>
+
+                                <a href="#" th:onclick="'javascript:changeAction(\'/removeDPropertyDomain/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="panel panel-warning">
+                    <div class="panel-heading">Property Ranges
+                        <a onclick="getDataTypes()" href="#" data-toggle="modal" data-target="#addDPropertyRange" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
+                    </div>
+                    <div class="panel-body">
+                        <ul class="list-group" >
+                            <li class="list-group-item" th:each="item : ${model.ranges}">
+                                <span th:text="${item}">Grrr!!!</span>
+                                <a href="#" th:onclick="'javascript:changeAction(\'/removeDPropertyRange/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
+
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </div>
-
-            <div class="panel panel-warning">
-                <div class="panel-heading">Disjoint Properties
-                    <a onclick="loadNonDisjoint()" href="#" data-toggle="modal" data-target="#addDisDProperty" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
-                </div>
-                <div class="panel-body">
-                    <ul class="list-group" >
-                        <li class="list-group-item" th:each="item : ${disjointDP}">
-                            <span th:text="${item}">Grrr!!!</span>
-                            <a href="#" th:onclick="'javascript:changeAction(\'/removeDisDProperty/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="panel panel-warning">
-                <div class="panel-heading">Property Domains
-                    <a onclick="getClassList()" href="#" data-toggle="modal" data-target="#addDPropertyDomain" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
-                </div>
-                <div class="panel-body">
-                    <ul class="list-group" >
-                        <li class="list-group-item" th:each="item : ${domainDP}">
-                            <span th:text="${item}">Grrr!!!</span>
-
-                            <a href="#" th:onclick="'javascript:changeAction(\'/removeDPropertyDomain/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <div class="panel panel-warning">
-                <div class="panel-heading">Property Ranges
-                    <a onclick="getDataTypes()" href="#" data-toggle="modal" data-target="#addDPropertyRange" ><span class="glyphicon glyphicon-plus-sign fa-lg pull-right"/></a>
-                </div>
-                <div class="panel-body">
-                    <ul class="list-group" >
-                        <li class="list-group-item" th:each="item : ${rangeDP}">
-                            <span th:text="${item}">Grrr!!!</span>
-                            <a href="#" th:onclick="'javascript:changeAction(\'/removeDPropertyRange/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
-
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
         </div>
     </div>
 </div>
@@ -106,7 +104,7 @@
                     <input type="hidden" name = "cardinality" value="0"/>
                     <div class="form-group">
                         <label>Name</label>
-                        <input type="text" th:field="*{currentClass}" class="form-control" required="required"/>
+                        <input type="text" th:field="*{cConcept}" class="form-control" required="required"/>
                     </div>
                     <div class="form-group">
                         <label>Parent</label>
@@ -147,7 +145,7 @@
                     <input type="hidden" value="0"/>
                     <div class="form-group">
                         <label>Property</label>
-                        <input type="text" th:value="${session.currentDP}" name="currentClass" class="form-control" disabled="disabled"/>
+                        <input type="text" th:value="${session.currentDP}" name="cConcept" class="form-control" disabled="disabled"/>
                     </div>
                     <div class="form-group">
                         <label>Disjoint Properties</label>
@@ -182,7 +180,7 @@
                     <input type="hidden" value="0"/>
                     <div class="form-group">
                         <label>Property</label>
-                        <input type="text" th:value="${session.currentDP}" name="currentClass" class="form-control" disabled="disabled"/>
+                        <input type="text" th:value="${session.currentDP}" name="cConcept" class="form-control" disabled="disabled"/>
                     </div>
                     <div class="form-group">
                         <label>Domain</label>
@@ -217,7 +215,7 @@
                     <input type="hidden" value="0"/>
                     <div class="form-group">
                         <label>Property</label>
-                        <input type="text" th:value="${session.currentOP}" name="currentClass" class="form-control" disabled="disabled"/>
+                        <input type="text" th:value="${session.currentOP}" name="cConcept" class="form-control" disabled="disabled"/>
                     </div>
                     <div class="form-group">
                         <label>Range</label>
@@ -271,11 +269,13 @@
     /*]]>*/
 
     $(document).ready(function () {
-        $('#tree')
+        $('#dtree')
             .on('changed.jstree', function (e, data) {
                 var objNode = data.instance.get_node(data.selected);
-                var url = '/dataPropertyDetail/' + objNode.text;
-                location.href = url;
+                var url = '/DataProperties/' + objNode.text;
+                history.pushState({}, null, url);
+                url = '/DataPropertiesAJAX/'+objNode.text;
+                $("#editFrag").load(url);
             })
             .jstree({
                 core: {
@@ -289,8 +289,8 @@
                 plugins: ["types"]
 
             });
-        $("#tree").on('ready.jstree', function () {
-            var instance = $("#tree").jstree(true);
+        $("#dtree").on('ready.jstree', function () {
+            var instance = $("#dtree").jstree(true);
             var branchCont = instance._model.data;
             for (var branchKey in branchCont) {
                 var branch = branchCont[branchKey];
@@ -299,7 +299,7 @@
                     break;
                 }
             }
-            $("#tree").jstree('open_all');
+            $("#dtree").jstree('open_all');
         });
 
         $("[name='addForm']").on('submit', function(e){

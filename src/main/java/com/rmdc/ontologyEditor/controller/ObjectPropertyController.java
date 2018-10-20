@@ -1,17 +1,9 @@
 package com.rmdc.ontologyEditor.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rmdc.ontologyEditor.UtilMethods;
 import com.rmdc.ontologyEditor.model.DataTransfer;
-import com.rmdc.ontologyEditor.model.TreeNode;
+import com.rmdc.ontologyEditor.model.OPKeeper;
 import com.rmdc.ontologyEditor.service.ObjectPropertyService;
-import org.semanticweb.owlapi.model.OWLException;
-import org.semanticweb.owlapi.model.OWLOntologyCreationException;
-import org.semanticweb.owlapi.model.OWLOntologyStorageException;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.Errors;
@@ -24,398 +16,253 @@ import java.util.List;
 public class ObjectPropertyController {
     private final DataTransfer dataTransfer;
     private final ObjectPropertyService objectPropertyService;
+    private OPKeeper keeper;
 
     public ObjectPropertyController(DataTransfer dataTransfer, ObjectPropertyService objectPropertyService) {
         this.dataTransfer = dataTransfer;
         this.objectPropertyService = objectPropertyService;
     }
 
-    @RequestMapping("/objectPropertyDetail/{property}")
-    public String getObjectPropertyHierarchy(@PathVariable String property, Model model, HttpSession session) throws OWLException {
-
-
-
+    @RequestMapping("/ObjectProperties/{property}")
+    public String viewOProperty(@PathVariable String property, Model model, HttpSession session){
 
         session.setAttribute("currentOP",property);
-
-
-        model.addAttribute("module", "oPView");
-        model.addAttribute("oPInverse",objectPropertyService.getInverseProperty(property));
-        model.addAttribute("disjointOP",objectPropertyService.getDisjointProperties(property));
-        model.addAttribute("domainOP",objectPropertyService.getDomains(property));
-        model.addAttribute("rangeOP",objectPropertyService.getRanges(property));
-        model.addAttribute("transfer",dataTransfer);
-      //  model.addAttribute("undo",!UtilMethods.changeQueue.isEmpty());
-        TreeNode tree = objectPropertyService.getObjectPropertyTree();
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            String jsonInString = mapper.writeValueAsString(tree);
-            model.addAttribute("tree", jsonInString);
-        } catch (Exception e) {
-            e.printStackTrace();
+        if(!property.equals("topObjectProperty")){
+            this.keeper = objectPropertyService.getKeeper(property);
+            model.addAttribute("model",keeper);
         }
+        model.addAttribute("transfer",dataTransfer);
+        model.addAttribute("module", "oPView");
+        model.addAttribute("tree", objectPropertyService.getObjectPropertyTree(true));
         return "objectPropertyDetail";
     }
 
-//    @RequestMapping("/getOPHierarchy")
-//    public ResponseEntity<?> getObjectPropertyHierarchy() throws OWLException {
-//        objectPropertyService.printHierarchy();
-//        ObjectMapper mapper = new ObjectMapper();
-//        String jsonInString = null;
-//        try {
-//            jsonInString = mapper.writeValueAsString(tree);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        return ResponseEntity.ok(jsonInString);
-//    }
+    @RequestMapping("/ObjectPropertiesAJAX/{property}")
+    public String viewOPropertyAJAX(@PathVariable String property, Model model, HttpSession session){
+
+        session.setAttribute("currentOP",property);
+        if(!property.equals("topObjectProperty")){
+            this.keeper = objectPropertyService.getKeeper(property);
+            model.addAttribute("model",keeper);
+        }
+        model.addAttribute("transfer",dataTransfer);
+        model.addAttribute("module", "oPView");
+        return "fragments::opFunctionBlock";
+    }
 
     @RequestMapping("/getObjectProperties")
     public ResponseEntity<?> getOPList(){
-        List<String> prs = objectPropertyService.getAllOProperties();
+        List<String> prs = objectPropertyService.getObjectProperties();
         return ResponseEntity.ok(prs);
-    }
-    @RequestMapping("/getOPChars/{property}")
-    public ResponseEntity<?> getOPCharacteristics(@PathVariable String property) throws OWLException {
-        return ResponseEntity.ok(objectPropertyService.getOPCharacteristics(property));
     }
 
     @PostMapping("/addNewOProperty")
-    public ResponseEntity<?> addObjectProperty(@ModelAttribute DataTransfer transfer, Errors errors, HttpSession session) throws Exception {
-        String result;
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        org.springframework.security.core.userdetails.User user = (User) auth.getPrincipal();
+    public ResponseEntity<?> addObjectProperty(@ModelAttribute DataTransfer transfer, Errors errors, HttpSession session){
 
+        if(transfer.isSymmetric() && transfer.isAsymmetric()){
+            return ResponseEntity.ok("a property can't be symmetric and asymmetric at the same time");
+        }
+        if(transfer.isReflexive() && transfer.isIrreflexive()){
+            return ResponseEntity.ok("a property can't be Reflexive and Ireflexive at the same time");
+        }
+        if((transfer.isFunctional() ||transfer.isInverseFunctional()) && transfer.isTransitive()){
+            return ResponseEntity.ok("if property is functional or inverse functional then it can't be a transitive");
+        }
+        if(transfer.isTransitive() && transfer.isAsymmetric()){
+            return ResponseEntity.ok("a property can't be Transitive and Asymmetric at the same time");
+        }
+        if(transfer.isTransitive() && transfer.isIrreflexive()){
+            return ResponseEntity.ok("property can't be Transitive and Ireflexive at the same time");
+        }
+        if(transfer.isAsymmetric() && transfer.isReflexive()){
+            return ResponseEntity.ok("property can't be Asymmetric and Reflexive at the same time");
+        }
 
-        if(transfer.getClassList().contains("S") && transfer.getClassList().contains("AS")){
-            result = "a property can't be symmetric and asymmetric at the same time";
-            return ResponseEntity.ok(result);
-        }
-        if(transfer.getClassList().contains("R") && transfer.getClassList().contains("IR")){
-            result = "a property can't be Reflexive and Ireflexive at the same time";
-            return ResponseEntity.ok(result);
-        }
-        if((transfer.getClassList().contains("F") ||transfer.getClassList().contains("IF")) && transfer.getClassList().contains("T")){
-            result = "if property is functional or inverse functional then it can't be a transitive";
-            return ResponseEntity.ok(result);
-        }
-        if(transfer.getClassList().contains("T") && transfer.getClassList().contains("AS")){
-            result = "a property can't be Transitive and Asymmetric at the same time";
-            return ResponseEntity.ok(result);
-        }
-        if(transfer.getClassList().contains("T") && transfer.getClassList().contains("IR")){
-            result = "property can't be Transitive and Ireflexive at the same time";
-            return ResponseEntity.ok(result);
-        }
-        if(transfer.getClassList().contains("As") && transfer.getClassList().contains("R")){
-            result = "property can't be Asymmetric and Reflexive at the same time";
-            return ResponseEntity.ok(result);
-        }        
+        boolean result;
+
         if(transfer.getoProperties().get(0).equals("topObjectProperty")){
-            objectPropertyService.addOProperty(transfer.getcConcept());
-
-//            if(.consistent==1){
-//                session.setAttribute("currentOP",transfer.getCurrentClass());
-//                dbService.addObjectProperty((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//            }
+            result = objectPropertyService.addOProperty(transfer.getcConcept(),transfer.getDescription());
         }else{
-            objectPropertyService.addSubOProperty(transfer.getcConcept(),transfer.getoProperties().get(0));
-//            if(UtilMethods.consistent==1){
-//                session.setAttribute("currentOP",transfer.getCurrentClass());
-//                dbService.addObjectProperty((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//            }
+            result = objectPropertyService.addSubOProperty(transfer.getcConcept(),transfer.getoProperties().get(0),transfer.getDescription());
         }
 
-        for(String s:transfer.getClassList()){
-            if(s.equals("F")){
-                objectPropertyService.addFunctionalProperty(transfer.getcConcept());
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//                }
-            }else if(s.equals("IF")){
-                objectPropertyService.addInverseFunctionalProperty(transfer.getcConcept());
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//                }
-            }else if(s.equals("T")){
-                objectPropertyService.addTransitiveProperty(transfer.getcConcept());
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//                }
-            }else if(s.equals("S")){
-                objectPropertyService.addSymmetricProperty(transfer.getcConcept());
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//                }
-            }else if(s.equals("AS")){
-                objectPropertyService.addAsymmetricProperty(transfer.getcConcept());
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//                }
-            }else if(s.equals("R")){
-                objectPropertyService.addReflexiveProperty(transfer.getcConcept());
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//                }
-            }else{
-                objectPropertyService.addIreflexiveProperty(transfer.getcConcept());
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//                }
-            }
-
-//            new ClassController().updateVersion(session,transfer,dbService,"currentOP");
+        if(transfer.isFunctional()){
+            result = objectPropertyService.addFunctionalProperty(transfer.getcConcept(),transfer.getDescription());
         }
-        return ResponseEntity.ok("result pending");
+        if(transfer.isInverseFunctional()){
+            result = objectPropertyService.addInverseFunctionalProperty(transfer.getcConcept(),transfer.getDescription());
+        }
+        if(transfer.isTransitive()){
+            result = objectPropertyService.addTransitiveProperty(transfer.getcConcept(),transfer.getDescription());
+        }
+        if(transfer.isSymmetric()){
+            result = objectPropertyService.addSymmetricProperty(transfer.getcConcept(),transfer.getDescription());
+        }
+        if(transfer.isAsymmetric()){
+            result = objectPropertyService.addAsymmetricProperty(transfer.getcConcept(),transfer.getDescription());
+        }
+        if(transfer.isReflexive()){
+            result = objectPropertyService.addReflexiveProperty(transfer.getcConcept(),transfer.getDescription());
+        }
+        if(transfer.isReflexive()){
+            result = objectPropertyService.addIreflexiveProperty(transfer.getcConcept(),transfer.getDescription());
+        }
+        if(result){
+            return ResponseEntity.ok("/ObjectProperties/" +  transfer.getcConcept());
+        }
+        return ResponseEntity.ok("could not add");
     }
 
-    @PostMapping("/editCharacteristics")
-    public ResponseEntity<?> editOPCharacteristics(@ModelAttribute DataTransfer transfer, HttpSession session) throws Exception {
-        
-        boolean result = false;
+    @PostMapping("/editCharacteristics/{character}")
+    public ResponseEntity<?> editOPCharacteristics(@PathVariable String character, @ModelAttribute DataTransfer transfer, HttpSession session){
+
+        boolean result;
         String prop = (String)session.getAttribute("currentOP");
-
-//        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//        org.springframework.security.core.userdetails.User user = (User) auth.getPrincipal();
-
-        if(transfer.getcConcept().equals("F")){
-            if(objectPropertyService.isFunctional(prop)){
-                result =objectPropertyService.removeFunctionalProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.removeAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }else{
-            objectPropertyService.addFunctionalProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-
-            }
-            return  ResponseEntity.ok(result);
+        switch (character){
+            case "functional" :
+                if(!transfer.isFunctional()){
+                    result = objectPropertyService.removeFunctionalProperty(prop,transfer.getDescription());
+                }else{
+                    result = objectPropertyService.addFunctionalProperty(prop,transfer.getDescription());
+                }
+                return  ResponseEntity.ok(result);
+            case "inverseFunctional" :
+                if(!transfer.isInverseFunctional()){
+                    result = objectPropertyService.removeInverseFunctionalProperty(prop,transfer.getDescription());
+                }else{
+                    result = objectPropertyService.addInverseFunctionalProperty(prop,transfer.getDescription());
+                }
+                return  ResponseEntity.ok(result);
+            case "transitive" :
+                if(!transfer.isTransitive()){
+                    result = objectPropertyService.removeTransitiveProperty(prop,transfer.getDescription());
+                }else{
+                    result = objectPropertyService.addTransitiveProperty(prop,transfer.getDescription());
+                }
+                return  ResponseEntity.ok(result);
+            case "symmetric" :
+                if(!transfer.isSymmetric()){
+                    result = objectPropertyService.removeSymmetricProperty(prop,transfer.getDescription());
+                }else{
+                    result = objectPropertyService.addSymmetricProperty(prop,transfer.getDescription());
+                }
+                return  ResponseEntity.ok(result);
+            case "asymmetric" :
+                if(!transfer.isAsymmetric()){
+                    result = objectPropertyService.removeAsymmetricProperty(prop,transfer.getDescription());
+                }else{
+                    result = objectPropertyService.addAsymmetricProperty(prop,transfer.getDescription());
+                }
+                return  ResponseEntity.ok(result);
+            case "reflexive" :
+                if(!transfer.isReflexive()){
+                    result = objectPropertyService.removeReflexiveProperty(prop,transfer.getDescription());
+                }else{
+                    result = objectPropertyService.addReflexiveProperty(prop,transfer.getDescription());
+                }
+                return  ResponseEntity.ok(result);
+            case "irreflexive" :
+                if(keeper.isIrreflexive()){
+                    result = objectPropertyService.removeIreflexiveProperty(prop,transfer.getDescription());
+                }else{
+                    result = objectPropertyService.addIreflexiveProperty(prop,transfer.getDescription());
+                }
+                return  ResponseEntity.ok(result);
         }
-        if(transfer.getcConcept().equals("IF")){
-            if(objectPropertyService.isInverseFunctional(prop)){
-                result =objectPropertyService.removeInverseFunctionalProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.removeAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }else{
-                objectPropertyService.addInverseFunctionalProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-
-            }
-            return  ResponseEntity.ok(result);
-        }
-        if(transfer.getcConcept().equals("T")){
-            if(objectPropertyService.isTransitive(prop)){
-                result =objectPropertyService.removeTransitiveProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.removeAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }else{
-                objectPropertyService.addTransitiveProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }
-            return  ResponseEntity.ok(result);
-        }
-        if(transfer.getcConcept().equals("S")){
-            if(objectPropertyService.isSymmetric(prop)){
-                result = objectPropertyService.removeSymetricProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.removeAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }else{
-                objectPropertyService.addSymmetricProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }
-            return  ResponseEntity.ok(result);
-        }
-        if(transfer.getcConcept().equals("AS")){
-            if(objectPropertyService.isAsymmetric(prop)){
-                result =objectPropertyService.removeAsymetricProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.removeAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }else{
-                objectPropertyService.addAsymmetricProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }
-            return  ResponseEntity.ok(result);
-        }
-        if(transfer.getcConcept().equals("R")){
-            if(objectPropertyService.isReflexive(prop)){
-                result =objectPropertyService.removeReflexiveProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.removeAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }else{
-                objectPropertyService.addReflexiveProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }
-            return  ResponseEntity.ok(result);
-        }
-        if(transfer.getcConcept().equals("IR")){
-            if(objectPropertyService.isIrreflexive(prop)){
-                result =objectPropertyService.removeIreflexiveProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.removeAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }else{
-                objectPropertyService.addIreflexiveProperty(prop);
-//                if(UtilMethods.consistent==1){
-//                    dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),1);
-//                }
-            }
-            return  ResponseEntity.ok(result);
-        }
-        return  ResponseEntity.ok(result);
+        return  ResponseEntity.ok(false);
     }
 
     @GetMapping("/removeOProperty")
-    public ResponseEntity<?> removeOProperty(@ModelAttribute DataTransfer transfer, HttpSession session) throws Exception {
+    public ResponseEntity<?> removeOProperty(@ModelAttribute DataTransfer transfer, HttpSession session){
 
-       // new ClassController().createVersion(dbService);
-        boolean result = objectPropertyService.removeOProperty((String) session.getAttribute("currentOP"));
+        boolean result = objectPropertyService.removeOProperty((String) session.getAttribute("currentOP"),transfer.getDescription());
 
-//        if(UtilMethods.consistent==1){
-//            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//            org.springframework.security.core.userdetails.User user = (User) auth.getPrincipal();
-//            dbService.removeObjectProperty((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//        }
-        session.setAttribute("currentOP","topObjectProperty");
-        return ResponseEntity.ok("Object Property Deleted");
+        if(result){
+            session.setAttribute("currentOP","topObjectProperty");
+            return ResponseEntity.ok("/ObjectProperties/topObjectProperty");
+        }
+        return  ResponseEntity.ok("Class Not deleted");
     }
+
     @PostMapping("/addIOProperty")
-    public ResponseEntity<?> addIObjectProperty(@ModelAttribute DataTransfer transfer, Errors errors, HttpSession session) throws Exception {
-
-        
-        objectPropertyService.addInverseProperty((String) session.getAttribute("currentOP"),transfer.getoProperties().get(0));
-
-       // new ClassController().updateVersion(session,transfer,dbService,"currentOP");
-
-        return ResponseEntity.ok("");
-    }
-    @GetMapping("/removeIOProperty")
-    public ResponseEntity<?> addIObjectProperty(Model model, HttpSession session) throws Exception {
-        //new ClassController().createVersion(dbService);
-        
-        objectPropertyService.removeInverseProperty((String) session.getAttribute("currentOP"));
-
-//        if(UtilMethods.consistent==1){
-//            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//            org.springframework.security.core.userdetails.User user = (User) auth.getPrincipal();
-//            dbService.removeAxiom((String) session.getAttribute("currentOP"),user.getUsername(),UtilMethods.manchesterExplainer(UtilMethods.axiomsQueue.get(0)),Variables.version.getId());
-//        }
-
-        return ResponseEntity.ok("");
-    }
-
-
-    @PostMapping("/addOPropertyRange")
-    public ResponseEntity<?> addOPropertyRange(@ModelAttribute DataTransfer transfer, HttpSession session) throws Exception {
-        
-       // new ClassController().updateVersion(session,transfer,dbService,"currentOP");
-        boolean result= objectPropertyService.addRange((String) session.getAttribute("currentOP"),transfer.getClassList().get(0));
-//        if(UtilMethods.consistent==1){
-//            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//            org.springframework.security.core.userdetails.User user = (User) auth.getPrincipal();
-//            dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//        }
+    public ResponseEntity<?> addIObjectProperty(@ModelAttribute DataTransfer transfer, Errors errors, HttpSession session){
+        boolean result = objectPropertyService.addInverseProperty((String) session.getAttribute("currentOP"),transfer.getoProperties().get(0),transfer.getDescription());
         return ResponseEntity.ok(result);
     }
-    @GetMapping("/removeOPropertyRange/{property}")
-    public ResponseEntity<?> removeOPropertyRange(@PathVariable String property, @ModelAttribute DataTransfer transfer, HttpSession session) throws Exception {
-        
-       // new ClassController().createVersion(dbService);
-        boolean result= objectPropertyService.removeRange((String) session.getAttribute("currentOP"),property);
 
-//        if(UtilMethods.consistent==1){
-//            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//            org.springframework.security.core.userdetails.User user = (User) auth.getPrincipal();
-//            dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//        }
+    @GetMapping("/removeIOProperty/{property}")
+    public ResponseEntity<?> addIObjectProperty(@PathVariable String property, Model model, HttpSession session){
+        boolean result = objectPropertyService.removeInverseProperty((String) session.getAttribute("currentOP"),property,null);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/addOPropertyRange")
+    public ResponseEntity<?> addOPropertyRange(@ModelAttribute DataTransfer transfer, HttpSession session){
+        boolean result = objectPropertyService.addRange((String) session.getAttribute("currentOP"),transfer.getClassList().get(0),transfer.getDescription());
+
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/removeOPropertyRange/{property}")
+    public ResponseEntity<?> removeOPropertyRange(@PathVariable String property, @ModelAttribute DataTransfer transfer, HttpSession session){
+        boolean result= objectPropertyService.removeRange((String) session.getAttribute("currentOP"),property,transfer.getDescription());
         return ResponseEntity.ok(result);
     }
 
     @PostMapping("/addOPropertyDomain")
-    public ResponseEntity<?> addOPropertyDomain(@ModelAttribute DataTransfer transfer, HttpSession session) throws Exception {
-        
-        boolean result= objectPropertyService.addDomain((String) session.getAttribute("currentOP"),transfer.getClassList().get(0));
-
-       // new ClassController().updateVersion(session,transfer,dbService,"currentOP");
+    public ResponseEntity<?> addOPropertyDomain(@ModelAttribute DataTransfer transfer, HttpSession session){
+        boolean result= objectPropertyService.addDomain((String) session.getAttribute("currentOP"),transfer.getClassList().get(0),transfer.getDescription());
 
         return ResponseEntity.ok(result);
     }
+
     @GetMapping("/removeOPropertyDomain/{property}")
-    public ResponseEntity<?> removeOPropertyDomain(@PathVariable String property, @ModelAttribute DataTransfer transfer, HttpSession session) throws Exception {
-        
-        //new ClassController().createVersion(dbService);
-        boolean result= objectPropertyService.removeDomain((String) session.getAttribute("currentOP"),property);
-
-//        if(UtilMethods.consistent==1){
-//            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//            org.springframework.security.core.userdetails.User user = (User) auth.getPrincipal();
-//            dbService.removeAxiom((String) session.getAttribute("currentOP"),user.getUsername(),transfer.getDescription(),Variables.version.getId());
-//        }
+    public ResponseEntity<?> removeOPropertyDomain(@PathVariable String property, @ModelAttribute DataTransfer transfer, HttpSession session){
+        boolean result= objectPropertyService.removeDomain((String) session.getAttribute("currentOP"),property,transfer.getDescription());
 
         return ResponseEntity.ok(result);
     }
 
-    @GetMapping("/getDisOProperties")
-    public ResponseEntity<?> getDisOProperty(HttpSession session) throws Exception {
-        return ResponseEntity.ok(objectPropertyService.getDisjointProperties((String) session.getAttribute("currentOP")));
-    }
-    @GetMapping("/getNonDisOProperties")
-    public ResponseEntity<?> getNonDisOProperty(HttpSession session) throws Exception {
-        return ResponseEntity.ok(objectPropertyService.getNonDisjointProperties((String) session.getAttribute("currentOP")));
-    }
+//    @GetMapping("/getDisOProperties")
+//    public ResponseEntity<?> getDisOProperty(HttpSession session){
+//        return ResponseEntity.ok(objectPropertyService.getDisjointProperties((String) session.getAttribute("currentOP")));
+//    }
+//    @GetMapping("/getNonDisOProperties")
+//    public ResponseEntity<?> getNonDisOProperty(HttpSession session){
+//        return ResponseEntity.ok(objectPropertyService.getNonDisjointProperties((String) session.getAttribute("currentOP")));
+//    }
 
     @PostMapping("/addDisOProperty")
-    public ResponseEntity<?> addDisObjectProperty(@ModelAttribute DataTransfer transfer, HttpSession session) throws Exception {
+    public ResponseEntity<?> addDisObjectProperty(@ModelAttribute DataTransfer transfer, HttpSession session){
         
         boolean result= false;
         for(String s:transfer.getoProperties()){
-            result =  objectPropertyService.addDisOProperty((String) session.getAttribute("currentOP"),s);
-
+            result = objectPropertyService.addDisOProperty((String) session.getAttribute("currentOP"),s,transfer.getDescription());
         }
 
         if(result){
             for(String s:transfer.getoProperties()){
-                objectPropertyService.removeDisOProperty((String) session.getAttribute("currentOP"),s);
-
+                result = objectPropertyService.removeDisOProperty((String) session.getAttribute("currentOP"),s,transfer.getDescription());
             }
-           // new ClassController().createVersion(dbService);
 
             for(String s:transfer.getoProperties()){
-                objectPropertyService.removeDisOProperty((String) session.getAttribute("currentOP"),s);
-
+                result = objectPropertyService.removeDisOProperty((String) session.getAttribute("currentOP"),s,transfer.getDescription());
             }
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            org.springframework.security.core.userdetails.User user = (User) auth.getPrincipal();
-           // dbService.addAxiom((String) session.getAttribute("currentOP"), user.getUsername(),transfer.getDescription(),Variables.version.getId());
         }
-
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/removeDisOProperty/{property}")
-    public ResponseEntity<?> removeDisObjectProperty(@PathVariable String property, @ModelAttribute DataTransfer transfer, HttpSession session) throws Exception {
-        
-        boolean result =  objectPropertyService.removeDisOProperty((String) session.getAttribute("currentOP"),property);
-
-        //new ClassController().updateVersion(session,transfer,dbService,"currentOP");
-
+    public ResponseEntity<?> removeDisObjectProperty(@PathVariable String property, @ModelAttribute DataTransfer transfer, HttpSession session){
+        boolean result =  objectPropertyService.removeDisOProperty((String) session.getAttribute("currentOP"),property,transfer.getDescription());
         return ResponseEntity.ok(result);
     }
+
+//    private void loadOPropertyData(String property, Model model){
+//        model.addAttribute("oPInverse",objectPropertyService.getInverseProperty(property));
+//        model.addAttribute("disjointOP",objectPropertyService.getDisjointProperties(property));
+//        model.addAttribute("domainOP",objectPropertyService.getDomains(property));
+//        model.addAttribute("rangeOP",objectPropertyService.getRanges(property));
+//    }
 
 }

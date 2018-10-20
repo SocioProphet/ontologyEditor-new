@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -48,15 +49,19 @@ public class DBService {
         this.changeAnnotationRepository = changeAnnotationRepository;
     }
 
-    static List<TempChangesKeeper> getChanges() {
+    public static void updateDBQueue( List<OWLAxiom> axioms, List<OWLNamedIndividual> individuals,
+                               List<OWLAnnotation> annotations,
+                               EChangeType eChangeType, String conceptName,
+                               EConceptType eConceptType, String description){
+
         if(changes==null){
             changes = new ArrayList<>();
         }
-        return DBService.changes;
-    }
 
-    public static void setChanges(List<TempChangesKeeper> changes) {
-        DBService.changes = changes;
+        TempChangesKeeper changesKeeper = new TempChangesKeeper(
+                axioms,individuals, annotations, new Date(),
+                eChangeType, conceptName, eConceptType, description );
+        changes.add(changesKeeper);
     }
 
     public void updateDatabase(String author){
@@ -84,7 +89,7 @@ public class DBService {
                 ChangeDes changeDes = new ChangeDes();
                 changeDes.setOntoChange(ontoChange);
                 changeDes.setDescription(axiom.toString());
-                changeDes.setObject(UtilMethods.toByts(axiom));
+                changeDes.setObject(UtilMethods.toBits(axiom));
                 changeDesRepository.save(changeDes);
             }
 
@@ -92,7 +97,7 @@ public class DBService {
             for(OWLNamedIndividual i: change.getIndividuals()){
                 ChangeInstances instances= new ChangeInstances();
                 instances.setOntoChange(ontoChange);
-                instances.setObject(UtilMethods.toByts(i));
+                instances.setObject(UtilMethods.toBits(i));
                 instances.setDescription(i.getIRI().getShortForm());
                 changeInstancesRepository.save(instances);
             }
@@ -100,11 +105,35 @@ public class DBService {
             for (OWLAnnotation annotation : change.getAnnotations()) {
                 ChangeAnnotation changeAnnotation = new ChangeAnnotation();
                 changeAnnotation.setOntoChange(ontoChange);
-                changeAnnotation.setObject(UtilMethods.toByts(annotation));
+                changeAnnotation.setObject(UtilMethods.toBits(annotation));
                 changeAnnotation.setAnnKey(annotation.getProperty().toString());
                 changeAnnotation.setAnnValue(annotation.getValue().asLiteral().asSet().iterator().next().getLiteral());
                 changeAnnotationRepository.save(changeAnnotation);
             }
         }
+    }
+
+    public Iterable<OntoVersion> getVersions(){
+        return ontoVersionRepository.findAll();
+    }
+
+    public Iterable<OntoChange> getChanges(){
+        return ontoChangeRepository.findAll();
+    }
+
+    public OntoChange getOntoChange(int id){
+        return ontoChangeRepository.findOntoChangeById(id);
+    }
+
+    public Iterable<ChangeDes> getDesForChange(OntoChange change){
+        return changeDesRepository.findChangeDesByOntoChange(change);
+    }
+
+    public Iterable<ChangeInstances> getInstancesForChange(OntoChange change){
+        return changeInstancesRepository.findChangeInstancesByOntoChange(change);
+    }
+
+    public Iterable<ChangeAnnotation> changeAnnotationRepository(OntoChange change){
+        return changeAnnotationRepository.findChangeAnnotationByOntoChange(change);
     }
 }

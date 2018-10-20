@@ -1,0 +1,10 @@
+INSERT INTO `onto_version` VALUES (1,0,true,'C:\\\\Users\\\\Dhanushka\\\\Desktop\\\\SLN_Ontology.owl',1,'first version',0,0,'2018-07-23 13:05:53');
+INSERT INTO `role` VALUES (1,'Admin');
+INSERT INTO `user` VALUES (1,'Admin','$2a$10$QuhDX.aT4RE4TnKcmw7IyenhLRXLzNEYCDAckP1uFBm5EXmf6IU0G','2018-07-23 14:07:41',1);
+INSERT INTO `change_type` VALUES (1,'ADD');
+INSERT INTO `change_type` VALUES (2,'DELETE');
+INSERT INTO `change_type` VALUES (3,'UPDATE');
+INSERT INTO `change_on` VALUES (1,'CLASS');
+INSERT INTO `change_on` VALUES (2,'OBJECT_PROPERTY');
+INSERT INTO `change_on` VALUES (3,'DATA_PROPERTY');
+INSERT INTO `change_on` VALUES (4,'ANNOTATION');

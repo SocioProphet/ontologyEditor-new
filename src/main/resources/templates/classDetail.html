@@ -23,26 +23,25 @@
             </h4>
             <div id="class-tree"></div>
         </div>
-        <div class="col-sm-9 col-md-9 col-lg-9 tree well well-sm" th:if="${session.currentClass} != 'Thing'">
-
+        <div class="col-sm-9 col-md-9 col-lg-9 tree well well-sm" id="editFrag">
+            <div  th:if="${session.currentClass} != 'Thing'">
             <div id="errorMsg"></div>
             <div class="panel panel-info">
                 <div class="panel-heading"><p style="display:inline;" th:text="${session.currentClass}"></p>
-
                     <a href="#" data-toggle="modal" data-target="#rename"><span class="glyphicon glyphicon-pencil fa-md " style="float:  right; font-size:  23px; margin-top:  -3px;"/></a>
                     <a href="#" data-toggle="modal" data-target="#addAnnotation"><span class="glyphicon glyphicon-plus fa-md " style="font-size: 24px; float: right; margin-top: -4px;"/></a>
                     <a href="#" onclick="changeAction('/removeClass');" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right" style="margin-top:  -8px;"/></a>
                 </div>
                 <div class="panel-body">
                     <ul  class="list-group" >
-                        <li class="list-group-item" th:each="ann,iterStat : ${annotations}">
+                        <li class="list-group-item" th:each="ann,iterStat : ${model.annotations}">
 
                             <span th:text="${ann.property}" style="color: #74a9d6"></span>
 
                             <span th:text="${ann.value}"></span>
                             <a href="#" th:onclick="'javascript:changeAction(\'/removeAnnotation/'+${iterStat.index}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
 
-                                <!--<span th:text="${someVar}">Grrr!!!</span>-->
+                            <!--<span th:text="${someVar}">Grrr!!!</span>-->
 
 
                             <!--<span th:text="${ann.getValue()}">Grrr!!!</span>-->
@@ -54,9 +53,9 @@
             <div id="subClasses" class="panel panel-info">
                 <div class="panel-heading">Sub Class Axioms<a onclick="loadClassData(); changeAAction('/addSubClassAxiom');" href="#" class="pull-right" data-toggle="modal" data-target="#addSEAxiom" id="addSub"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
 
-                <div class="panel-body" th:if="${subClasses != null}">
+                <div class="panel-body" th:if="${model.subClassRestrictions != null}">
                     <ul  class="list-group" >
-                        <li class="list-group-item" th:each="item,iterStat : ${subClasses}">
+                        <li class="list-group-item" th:each="item,iterStat : ${model.subClassRestrictions}">
                             <span th:text="${item.axiom}">Grrr!!!</span>
                             <a href="#" th:onclick="'javascript:changeAction(\'/removeSubClassOfAxiom/'+${iterStat.index}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
                         </li>
@@ -65,22 +64,21 @@
             </div>
             <div id="equivalentClasses" class="panel panel-info">
                 <div class="panel-heading">Equivalent Class Axioms<a onclick="loadClassData(); changeAAction('/addEqClassAxiom');" href="#" class="pull-right" data-toggle="modal" data-target="#addSEAxiom" id="addEq"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
-                <div class="panel-body" th:if="${eqClasses != null}">
+                <div class="panel-body" th:if="${model.eqClassRestrictions != null}">
                     <ul class="list-group" >
-                        <li class="list-group-item" th:each="item,iterStat : ${eqClasses}">
+                        <li class="list-group-item" th:each="item,iterStat : ${model.eqClassRestrictions}">
                             <span th:text="${item.axiom}">Grrr!!!</span>
                             <a href="#" th:onclick="'javascript:changeAction(\'/removeEqClassOfAxiom/'+${iterStat.index}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
                         </li>
                     </ul>
                 </div>
             </div>
-
             <div id="disjointClasses" class="panel panel-info">
                 <div class="panel-heading">Disjoint Classes<a onclick="getNonDisjointClasses()" href="#" class="pull-right" data-toggle="modal" data-target="#addDjAxiom" id="addDj"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
-                <div class="panel-body" th:if="${djClasses != null}">
+                <div class="panel-body" th:if="${model.disjointClasses != null}">
                     <ul class="list-group" >
-                        <li class="list-group-item" th:each="item : ${djClasses}">
-                            <span th:text="${item}">Grrr!!!</span>
+                        <li class="list-group-item" th:each="item : ${model.disjointClasses}">
+                            <a th:onclick="'javascript:loadAjax(\'' + ${item} + '\');'"><span th:text="${item}">Grrr!!!</span></a>
                             <a href="#" th:onclick="'javascript:changeAction(\'/removeDisjointAxiom/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
                         </li>
                     </ul>
@@ -88,9 +86,9 @@
             </div>
             <div id="domainOf" class="panel panel-info">
                 <div class="panel-heading">Domain of<a onclick="getDomainOfData()" href="#" class="pull-right" data-toggle="modal" data-target="#domain" id="addDomain"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
-                <div class="panel-body" th:if="${domainOf != null}">
+                <div class="panel-body" th:if="${model.domainOf != null}">
                     <ul class="list-group" >
-                        <li class="list-group-item" th:each="item : ${domainOf}">
+                        <li class="list-group-item" th:each="item : ${model.domainOf}">
                             <span th:text="${item}">Grrr!!!</span>
                             <a href="#" th:onclick="'javascript:changeAction(\'/removeDomainOf/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
                         </li>
@@ -100,16 +98,18 @@
             </div>
             <div id="rangeOf" class="panel panel-info">
                 <div class="panel-heading">Range of <a onclick="getRangeOfData()" href="#" class="pull-right" data-toggle="modal" data-target="#range" id="addRange"><span class="glyphicon glyphicon-plus-sign fa-lg "/></a></div>
-                <div class="panel-body" th:if="${rangeOf != null}">
+                <div class="panel-body" th:if="${model.rangeOf != null}">
                     <ul class="list-group" >
-                        <li class="list-group-item" th:each="item : ${rangeOf}">
+                        <li class="list-group-item" th:each="item : ${model.rangeOf}">
                             <span th:text="${item}">Grrr!!!</span>
                             <a href="#" th:onclick="'javascript:changeAction(\'/removeRangeOf/'+${item}+'\');'" data-toggle="modal" data-target="#deleteForm"><span class="glyphicon glyphicon-remove-circle fa-lg pull-right"/></a>
                         </li>
                     </ul>
                 </div>
             </div>
+            </div>
         </div>
+
     </div>
 </div>
 
@@ -195,10 +195,13 @@
                 <h4>Add Annotation</h4>
             </div>
             <div class="modal-body" style="padding:40px 50px;">
-                <form th:action="@{/rename}" method="post" th:object="${transfer}" name="addAxiom">
+                <form th:action="@{/rename}" method="post" th:object="${transfer}">
 
                     <div class="form-group"><label>Enter the new Name</label>
-                        <input type="text" class="form-control" th:field="*{description}"/>
+                        <input type="text" class="form-control" th:field="*{classList}"/>
+                    </div>
+                    <div class="form-group"><label>Description</label>
+                        <textarea class="form-control" rows="5" th:field="*{description}"></textarea>
                     </div>
                     <div class="form-group">
                         <button type="submit" class="btn btn-success btn-block"> Add Annotation </button>
@@ -473,6 +476,26 @@
     /*]]>*/
 </script>
 <script type="text/javascript">
+
+    function loadAjax(owlClass){
+        var url = '/Classes/'+owlClass;
+        history.pushState({}, null, url);
+        url = '/ClassesAJAX/'+owlClass;
+        $("#editFrag").load(url);
+
+        $("#class-tree").jstree("deselect_all", true);
+        var instance = $("#class-tree").jstree(true);
+        var branchCont = instance._model.data;
+        for(var branchKey in branchCont) {
+            var branch = branchCont[branchKey];
+            if(branch.text === owlClass) {
+                instance.select_node(branchKey,true,false);
+                // $("#class-tree #"+branchKey)[0].scrollIntoView();
+                break;
+            }
+        }
+    }
+
     $(document).ready(function () {
 
 
@@ -487,12 +510,12 @@
         $('#class-tree')
             .on('changed.jstree', function (e, data) {
                 var objNode = data.instance.get_node(data.selected);
-                var url = '/classDetail/'+objNode.text;
-                location.href = url;
+                loadAjax(objNode.text)
             })
             .jstree({
                 core: {
-                    data: data
+                    data: data,
+                    animation: 0
                 },
                 types: {
                     "default" : {
@@ -509,6 +532,7 @@
                 var branch = branchCont[branchKey];
                 if(branch.text === node) {
                    instance.select_node(branchKey,true,false);
+                   // $("#class-tree #"+branchKey)[0].scrollIntoView();
                     break;
                 }
             }
@@ -518,7 +542,7 @@
 
 
 
-        $("[name='addAxiom'],[name='removeAxiom'],[name='addForm']").on('submit', function(e){
+        $("[name='addForm']").on('submit', function(e){
             e.preventDefault();
             var self = this;
             var form = $(this);
@@ -540,20 +564,21 @@
                         $.notify("Modification Failed: " , "error" );
                     }
 
-//                    location.reload(true);
-                    setTimeout(
-                        function()
-                        {
-                            if(result.indexOf("Deleted")>-1){
-                                window.location='/classDetail/Thing';
-                            }else{
-                                location.reload(true);
-                            }
-                        }, 2000);
+ //                    location.reload(true);
+                     setTimeout(
+                         function()
+                         {
+                             if(result.indexOf("/Classes/")>-1) {
+                                 window.location.replace(result);
+                             }// }else{
+                             //     location.reload(true);
+                             // }
+                         }, 2000);
                 },
                 complete: function (e) {
                     form.data('requestRunning', false);
                 }
+
 
             });
         });
@@ -577,7 +602,6 @@
             });
         });
     });
-
 
 
     function getDisjointClasses(){
@@ -717,7 +741,6 @@ function getNonDisjointClasses(){
         }
         $("#addSEAxiom").find("form").attr("action",url);
     }
-
 
 </script>
 </body>
